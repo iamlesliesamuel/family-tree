@@ -25,7 +25,7 @@ export function TreeNode({ person, role = 'self', badge, className }: TreeNodePr
       <div
         className={cn(
           'flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-200',
-          'min-w-[100px] max-w-[140px]',
+          'w-[120px]',
           'group-hover:-translate-y-0.5 group-focus-visible:ring-2 group-focus-visible:ring-amber-500/50',
           role === 'self' && [
             'bg-zinc-100 border-amber-500/40 dark:bg-zinc-800',
@@ -90,7 +90,7 @@ export function UnknownNode({ label = 'Unknown' }: { label?: string }) {
   return (
     <div className="flex flex-col items-center gap-2 p-3 rounded-xl border border-dashed
       border-zinc-300/60 dark:border-zinc-700/40
-      min-w-[100px] max-w-[140px] opacity-40">
+      w-[120px] opacity-40">
       <div className="w-9 h-9 flex items-center justify-center rounded-lg
         bg-zinc-50 border border-dashed border-zinc-300 text-zinc-400
         dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-600">
