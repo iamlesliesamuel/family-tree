@@ -70,7 +70,7 @@ export function ProfileEditorPanel({ person, partnerGroups, allPeople }: Profile
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const [showProfileEditor, setShowProfileEditor] = useState(false)
+  const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [profileForm, setProfileForm] = useState<PersonFormState>(toPersonFormState(person))
 
   const [parentMode, setParentMode] = useState<'existing' | 'new'>('existing')
@@ -179,7 +179,6 @@ export function ProfileEditorPanel({ person, partnerGroups, allPeople }: Profile
       })
 
       await refreshWithMessage('Profile updated')
-      setShowProfileEditor(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update profile')
     } finally {
@@ -394,54 +393,54 @@ export function ProfileEditorPanel({ person, partnerGroups, allPeople }: Profile
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            clearMessages()
-            setShowProfileEditor((v) => !v)
-          }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-300 text-zinc-700 hover:bg-zinc-100 transition-colors dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-        >
-          Edit Profile
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => {
+          clearMessages()
+          setIsEditorOpen((v) => !v)
+        }}
+        className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+          text-xs font-medium select-none
+          ${isEditorOpen
+            ? 'text-zinc-700 border border-zinc-300 bg-zinc-100 dark:text-zinc-300 dark:border-zinc-700 dark:bg-zinc-800/80'
+            : 'text-zinc-500 border border-zinc-200 hover:text-zinc-700 hover:bg-zinc-100 dark:text-zinc-400 dark:border-zinc-700/40 dark:hover:text-zinc-300 dark:hover:bg-zinc-800/60'
+          }`}
+        title={isEditorOpen ? 'Close editor' : 'Edit details'}
+      >
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+        Edit
+      </button>
 
-      {status && (
-        <p className="text-xs rounded-lg border border-emerald-400/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-3 py-2">
-          {status}
-        </p>
-      )}
-      {error && (
-        <p className="text-xs rounded-lg border border-red-400/30 bg-red-500/10 text-red-700 dark:text-red-400 px-3 py-2">
-          {error}
-        </p>
-      )}
+      {isEditorOpen && (
+        <>
+          {status && (
+            <p className="text-xs rounded-lg border border-emerald-400/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-3 py-2">
+              {status}
+            </p>
+          )}
+          {error && (
+            <p className="text-xs rounded-lg border border-red-400/30 bg-red-500/10 text-red-700 dark:text-red-400 px-3 py-2">
+              {error}
+            </p>
+          )}
 
-      {showProfileEditor && (
-        <form onSubmit={handleProfileSave} className="rounded-xl border border-zinc-200/70 bg-zinc-50/80 dark:bg-zinc-900/50 dark:border-zinc-700/50 p-4 flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Edit Person Details</h3>
-          <PersonFields form={profileForm} onChange={setProfileForm} includeRequiredNames />
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-3 py-1.5 rounded-md text-xs font-medium bg-amber-500 text-zinc-950 hover:bg-amber-400 disabled:opacity-60"
-            >
-              Save changes
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowProfileEditor(false)}
-              className="px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-300 dark:border-zinc-700"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+          <form onSubmit={handleProfileSave} className="rounded-xl border border-zinc-200/70 bg-zinc-50/80 dark:bg-zinc-900/50 dark:border-zinc-700/50 p-4 flex flex-col gap-3">
+            <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Edit Person Details</h3>
+            <PersonFields form={profileForm} onChange={setProfileForm} includeRequiredNames />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-3 py-1.5 rounded-md text-xs font-medium bg-amber-500 text-zinc-950 hover:bg-amber-400 disabled:opacity-60"
+              >
+                Save changes
+              </button>
+            </div>
+          </form>
 
-      <div className="rounded-xl border border-zinc-200/70 bg-zinc-50/80 dark:bg-zinc-900/50 dark:border-zinc-700/50 p-4 flex flex-col gap-4">
+          <div className="rounded-xl border border-zinc-200/70 bg-zinc-50/80 dark:bg-zinc-900/50 dark:border-zinc-700/50 p-4 flex flex-col gap-4">
         <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Family Editing</h3>
 
         <form onSubmit={handleAddParent} className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 flex flex-col gap-2">
@@ -600,7 +599,9 @@ export function ProfileEditorPanel({ person, partnerGroups, allPeople }: Profile
             <button type="submit" disabled={isSubmitting || !editingRelationshipId} className="self-start px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-300 dark:border-zinc-700">Save relationship</button>
           </form>
         )}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
