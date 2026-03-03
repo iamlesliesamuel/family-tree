@@ -15,6 +15,11 @@ type PersonPayload = {
   notes?: unknown
 }
 
+function extractMissingColumn(message: string): string | null {
+  const match = message.match(/Could not find the '([^']+)' column/i)
+  return match?.[1] ?? null
+}
+
 function asNullableString(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
@@ -54,19 +59,27 @@ function normalizePersonPayload(payload: PersonPayload) {
 export async function POST(req: NextRequest) {
   try {
     const payload = (await req.json()) as PersonPayload
-    const insertData = normalizePersonPayload(payload)
+    let insertData: Record<string, string | null> = normalizePersonPayload(payload)
 
-    const { data, error } = await supabase
-      .from('people')
-      .insert(insertData)
-      .select('*')
-      .single()
+    while (true) {
+      const { data, error } = await supabase
+        .from('people')
+        .insert(insertData)
+        .select('*')
+        .single()
 
-    if (error) {
+      if (!error) {
+        return NextResponse.json({ person: data }, { status: 201 })
+      }
+
+      const missingColumn = extractMissingColumn(error.message)
+      if (missingColumn && missingColumn in insertData) {
+        delete insertData[missingColumn]
+        continue
+      }
+
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
-
-    return NextResponse.json({ person: data }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Invalid request payload'
     return NextResponse.json({ error: message }, { status: 400 })

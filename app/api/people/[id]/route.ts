@@ -60,7 +60,20 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
   try {
     const payload = (await req.json()) as PersonPatchPayload
-    const updateData = normalizePersonPayload(payload)
+    const normalized = normalizePersonPayload(payload)
+
+    const currentRes = await supabase.from('people').select('*').eq('id', id).single()
+    if (currentRes.error || !currentRes.data) {
+      return NextResponse.json({ error: currentRes.error?.message ?? 'Person not found' }, { status: 404 })
+    }
+
+    const allowedColumns = new Set(Object.keys(currentRes.data as Record<string, unknown>))
+    const updateData = Object.fromEntries(
+      Object.entries(normalized).filter(([key]) => allowedColumns.has(key))
+    )
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ person: currentRes.data })
+    }
 
     const { data, error } = await supabase
       .from('people')

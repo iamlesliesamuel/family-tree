@@ -7,7 +7,13 @@ import {
   type PersonSummary,
   type PersonProfile,
 } from '@/lib/types'
-import { ProfileEditorPanel } from './ProfileEditorPanel'
+import {
+  DetailsEditorInline,
+  AddParentInline,
+  AddPartnerInline,
+  AddChildInline,
+  EditRelationshipInline,
+} from './InlineEditors'
 
 interface ProfileViewProps {
   profile: PersonProfile
@@ -73,7 +79,7 @@ export function ProfileView({ profile, allPeople }: ProfileViewProps) {
                 </div>
 
                 <div className="mt-1">
-                  <ProfileEditorPanel person={person} partnerGroups={partnerGroups} allPeople={allPeople} />
+                  <DetailsEditorInline person={person} />
                 </div>
               </div>
             </div>
@@ -116,8 +122,8 @@ export function ProfileView({ profile, allPeople }: ProfileViewProps) {
       </div>
 
       {/* ── Parents ──────────────────────────────────────────────────────── */}
-      {hasParents && (
-        <Section title="Parents">
+      <Section title="Parents" actions={<AddParentInline person={person} allPeople={allPeople} />}>
+        {hasParents ? (
           <div className="flex flex-col gap-2">
             {parents.map(({ person: parent, is_adopted }) => (
               <div key={parent.id} className="relative">
@@ -131,19 +137,32 @@ export function ProfileView({ profile, allPeople }: ProfileViewProps) {
               </div>
             ))}
           </div>
-        </Section>
-      )}
+        ) : (
+          <p className="text-xs text-zinc-400 dark:text-zinc-700 italic">No parents recorded yet.</p>
+        )}
+      </Section>
 
       {/* ── Relationships & children ──────────────────────────────────────── */}
-      {hasPartners && (
-        <Section title="Relationships">
+      <Section
+        title="Relationships"
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <AddPartnerInline person={person} allPeople={allPeople} />
+            <AddChildInline person={person} allPeople={allPeople} />
+            <EditRelationshipInline partnerGroups={partnerGroups} />
+          </div>
+        }
+      >
+        {hasPartners ? (
           <div className="flex flex-col gap-3">
             {partnerGroups.map((group, i) => (
               <RelationshipGroup key={i} group={group} index={i} />
             ))}
           </div>
-        </Section>
-      )}
+        ) : (
+          <p className="text-xs text-zinc-400 dark:text-zinc-700 italic">No relationships recorded yet.</p>
+        )}
+      </Section>
 
       {/* Empty state */}
       {!hasPartners && !hasParents && (
@@ -159,7 +178,15 @@ export function ProfileView({ profile, allPeople }: ProfileViewProps) {
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+  actions,
+}: {
+  title: string
+  children: React.ReactNode
+  actions?: React.ReactNode
+}) {
   return (
     <div>
       <div className="flex items-center gap-3 mb-3">
@@ -171,6 +198,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         </div>
         <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-700/40" />
       </div>
+      {actions && <div className="mb-3">{actions}</div>}
       {children}
     </div>
   )
