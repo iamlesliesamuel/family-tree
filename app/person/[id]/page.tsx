@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getPersonProfile } from '@/lib/queries'
+import { getAllPeopleSummary, getPersonProfile } from '@/lib/queries'
 import { getDisplayName, getYearRange } from '@/lib/types'
 import { ProfileView } from '@/components/ProfileView'
 import { TreeView } from '@/components/TreeView'
@@ -33,7 +33,7 @@ export default async function PersonPage({ params, searchParams }: PageProps) {
   const { id } = await params
   const { view } = await searchParams
 
-  const profile = await getPersonProfile(id)
+  const [profile, allPeople] = await Promise.all([getPersonProfile(id), getAllPeopleSummary()])
   if (!profile) notFound()
 
   const isTree = view === 'tree'
@@ -86,7 +86,7 @@ export default async function PersonPage({ params, searchParams }: PageProps) {
         {isTree ? (
           <TreeView profile={profile} />
         ) : (
-          <ProfileView profile={profile} />
+          <ProfileView profile={profile} allPeople={allPeople} />
         )}
       </div>
     </main>

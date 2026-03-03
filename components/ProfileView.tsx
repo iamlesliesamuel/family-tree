@@ -4,14 +4,17 @@ import {
   getDisplayName,
   getYear,
   formatDate,
+  type PersonSummary,
   type PersonProfile,
 } from '@/lib/types'
+import { ProfileEditorPanel } from './ProfileEditorPanel'
 
 interface ProfileViewProps {
   profile: PersonProfile
+  allPeople: PersonSummary[]
 }
 
-export function ProfileView({ profile }: ProfileViewProps) {
+export function ProfileView({ profile, allPeople }: ProfileViewProps) {
   const { person, parents, partnerGroups } = profile
   const birthYear   = getYear(person.birth_date)
   const deathYear   = getYear(person.death_date)
@@ -69,21 +72,9 @@ export function ProfileView({ profile }: ProfileViewProps) {
                   )}
                 </div>
 
-                {/* Edit placeholder */}
-                <button
-                  disabled
-                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg
-                    text-xs font-medium cursor-not-allowed select-none mt-1
-                    text-zinc-400 border border-zinc-200
-                    dark:text-zinc-700 dark:border-zinc-700/40`}
-                  title="Edit — coming soon"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round"
-                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  Edit
-                </button>
+                <div className="mt-1">
+                  <ProfileEditorPanel person={person} partnerGroups={partnerGroups} allPeople={allPeople} />
+                </div>
               </div>
             </div>
           </div>
