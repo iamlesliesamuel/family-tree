@@ -1,4 +1,5 @@
 import { TreeNode, UnknownNode } from './TreeNode'
+import { cn } from '@/lib/utils'
 import { type PersonProfile } from '@/lib/types'
 
 interface TreeViewProps {
@@ -97,22 +98,41 @@ export function TreeView({ profile }: TreeViewProps) {
                       <div className="w-px h-3 bg-zinc-300/70 dark:bg-zinc-700/60" />
                     </div>
 
-                    <div className="relative">
-                      {children.length > 1 && (
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2
-                          h-px bg-zinc-300/60 dark:bg-zinc-700/50 w-[calc(100%-80px)]" />
-                      )}
-                      <div className="flex flex-wrap justify-center gap-3 pt-3">
-                        {children.map(({ child, is_adopted }) => (
-                          <div key={child.id} className="flex flex-col items-center gap-0">
+                    <div className="w-full overflow-x-auto">
+                      <div className="flex flex-nowrap items-start justify-center min-w-min">
+                        {children.length === 1 ? (
+                          /* Single child — straight drop, no comb */
+                          <div className="flex flex-col items-center">
                             <div className="w-px h-3 bg-zinc-300/70 dark:bg-zinc-700/60" />
                             <TreeNode
-                              person={child}
+                              person={children[0].child}
                               role="child"
-                              badge={is_adopted ? 'Adopted' : undefined}
+                              badge={children[0].is_adopted ? 'Adopted' : undefined}
                             />
                           </div>
-                        ))}
+                        ) : (
+                          /* Multiple children — horizontal comb bar */
+                          children.map(({ child, is_adopted }) => (
+                            <div
+                              key={child.id}
+                              className={cn(
+                                'relative flex flex-col items-center flex-shrink-0 px-3',
+                                "before:content-[''] before:absolute before:top-0 before:h-px",
+                                'before:bg-zinc-300/60 dark:before:bg-zinc-700/50',
+                                'before:left-0 before:w-full',
+                                'first:before:left-[50%] first:before:w-[50%]',
+                                'last:before:w-[50%]',
+                              )}
+                            >
+                              <div className="w-px h-3 mt-px bg-zinc-300/70 dark:bg-zinc-700/60" />
+                              <TreeNode
+                                person={child}
+                                role="child"
+                                badge={is_adopted ? 'Adopted' : undefined}
+                              />
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   </>
