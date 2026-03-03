@@ -31,7 +31,14 @@ export function TreeView({ profile }: TreeViewProps) {
             /* Two parents — show as a couple with horizontal connector */
             <div className="flex flex-nowrap items-center gap-2">
               <TreeNode person={parents[0].person} role="parent" badge={parents[0].is_adopted ? 'Adoptive' : undefined} />
-              <div className="flex items-center gap-0.5">
+              {/*
+               * self-stretch makes this column span the full row height.
+               * The absolute inset-y-0 line runs top-to-bottom of that column,
+               * so the vertical stems above/below connect to it at the row edges
+               * rather than floating ~half-card-height away from the diamond.
+               */}
+              <div className="relative flex items-center gap-0.5 self-stretch">
+                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-zinc-300/70 dark:bg-zinc-700/60" />
                 <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
                 <ConnectorDiamond className="text-amber-500/40 flex-shrink-0" />
                 <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
@@ -83,8 +90,9 @@ export function TreeView({ profile }: TreeViewProps) {
                     <ConnectorDiamond className="text-amber-500/30 flex-shrink-0" />
                   )}
 
-                  {/* Horizontal connector */}
-                  <div className="flex items-center gap-0.5">
+                  {/* Horizontal connector — same self-stretch technique */}
+                  <div className="relative flex items-center gap-0.5 self-stretch">
+                    <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-zinc-300/70 dark:bg-zinc-700/60" />
                     <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
                     <ConnectorDiamond className="text-amber-500/40 flex-shrink-0" />
                     <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />

@@ -349,7 +349,8 @@ function TreeCanvas({ data, ancestorLevels, descendantLevels, onFocus }: TreeCan
           <div className="flex justify-end">
             <ExplorerNode person={data.focus} role="focus" onFocus={onFocus} />
           </div>
-          <div className="flex items-center gap-1.5 px-2">
+          <div className="relative flex items-center gap-1.5 px-2 self-stretch">
+            <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-amber-500/20 dark:bg-amber-500/15" />
             <div className="w-4 h-px bg-amber-500/25" />
             <Diamond className="text-amber-500/30" size={8} />
             <div className="w-4 h-px bg-amber-500/25" />
@@ -445,9 +446,10 @@ function GenerationRow({ people, role, onFocus }: {
 }) {
   if (people.length === 2) {
     return (
-      <div className="flex flex-wrap justify-center items-center gap-2">
+      <div className="flex flex-nowrap justify-center items-center gap-2">
         <ExplorerNode person={people[0]} role={role} onFocus={onFocus} />
-        <div className="flex items-center gap-1.5 self-center">
+        <div className="relative flex items-center gap-1.5 self-stretch">
+          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-zinc-300/70 dark:bg-zinc-700/60" />
           <div className="w-4 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
           <Diamond className="text-amber-500/35" size={8} />
           <div className="w-4 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
