@@ -238,6 +238,8 @@ function DescendantBranch({
 }) {
   const children = childMap.get(person.id) ?? []
   const size: 'md' | 'sm' | 'xs' = depth === 1 ? 'md' : depth === 2 ? 'sm' : 'xs'
+  const px      = size === 'md' ? 'px-3' : size === 'sm' ? 'px-2' : 'px-1.5'
+  const toothH  = size === 'md' ? 'h-3'  : size === 'sm' ? 'h-2.5' : 'h-2'
 
   return (
     <div className="flex flex-col items-center flex-shrink-0">
@@ -245,17 +247,42 @@ function DescendantBranch({
       {children.length > 0 && (
         <>
           <Connector size={size} />
-          <div className="flex flex-nowrap items-start justify-center gap-2">
-            {children.map(child => (
-              <DescendantBranch
-                key={child.id}
-                person={child}
-                childMap={childMap}
-                onFocus={onFocus}
-                depth={depth + 1}
-              />
-            ))}
-          </div>
+          {children.length === 1 ? (
+            /* Single child — straight stem, no comb needed */
+            <DescendantBranch
+              person={children[0]}
+              childMap={childMap}
+              onFocus={onFocus}
+              depth={depth + 1}
+            />
+          ) : (
+            /* Multiple children — horizontal comb bar via ::before on each column */
+            <div className="flex flex-nowrap items-start justify-center">
+              {children.map(child => (
+                <div
+                  key={child.id}
+                  className={cn(
+                    'relative flex flex-col items-center flex-shrink-0', px,
+                    // Horizontal comb bar: each column draws its slice
+                    "before:content-[''] before:absolute before:top-0 before:h-px",
+                    'before:bg-zinc-300/70 dark:before:bg-zinc-700/50',
+                    'before:left-0 before:w-full',            // middle children: full width
+                    'first:before:left-[50%] first:before:w-[50%]', // first: right half
+                    'last:before:w-[50%]',                    // last: left half
+                  )}
+                >
+                  {/* Tooth: short vertical drop from bar down to child card */}
+                  <div className={cn('w-px bg-zinc-300/70 dark:bg-zinc-700/50 mt-px', toothH)} />
+                  <DescendantBranch
+                    person={child}
+                    childMap={childMap}
+                    onFocus={onFocus}
+                    depth={depth + 1}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>
@@ -349,16 +376,37 @@ function TreeCanvas({ data, ancestorLevels, descendantLevels, onFocus }: TreeCan
           <OrnamentalRule label="Descendants" className="mt-5 mb-0" />
           <Connector />
           <div className="w-full overflow-x-auto">
-            <div className="flex flex-nowrap items-start justify-center gap-3 px-4 pb-10 min-w-min mx-auto">
-              {focusChildren.map(child => (
+            <div className="flex flex-nowrap items-start justify-center px-4 pb-10 min-w-min mx-auto">
+              {focusChildren.length === 1 ? (
                 <DescendantBranch
-                  key={child.id}
-                  person={child}
+                  person={focusChildren[0]}
                   childMap={childMap}
                   onFocus={onFocus}
                   depth={1}
                 />
-              ))}
+              ) : (
+                focusChildren.map(child => (
+                  <div
+                    key={child.id}
+                    className={cn(
+                      'relative flex flex-col items-center flex-shrink-0 px-3',
+                      "before:content-[''] before:absolute before:top-0 before:h-px",
+                      'before:bg-zinc-300/70 dark:before:bg-zinc-700/50',
+                      'before:left-0 before:w-full',
+                      'first:before:left-[50%] first:before:w-[50%]',
+                      'last:before:w-[50%]',
+                    )}
+                  >
+                    <div className="w-px h-3 mt-px bg-zinc-300/70 dark:bg-zinc-700/50" />
+                    <DescendantBranch
+                      person={child}
+                      childMap={childMap}
+                      onFocus={onFocus}
+                      depth={1}
+                    />
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </>
