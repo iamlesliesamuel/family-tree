@@ -339,28 +339,51 @@ function TreeCanvas({ data, ancestorLevels, descendantLevels, onFocus }: TreeCan
       ))}
 
       {/* ── Focus person + partners ───────────────────────────────────────── */}
-      <div className="flex items-start justify-center gap-3 flex-wrap py-3">
-        <ExplorerNode person={data.focus} role="focus" onFocus={onFocus} />
-
-        {hasPartners && (
-          <>
-            <div className="flex items-center self-center h-10">
-              <div className="flex items-center gap-1.5">
-                <div className="w-4 h-px bg-amber-500/25" />
-                <Diamond className="text-amber-500/30" size={8} />
-                <div className="w-4 h-px bg-amber-500/25" />
+      {hasPartners && data.partners.length === 1 ? (
+        /*
+         * Single partner — grid layout pins the diamond to the exact horizontal
+         * center (1fr each side) regardless of focus (140px) vs partner (100px)
+         * card widths, so the vertical stem above/below connects perfectly.
+         */
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full py-3">
+          <div className="flex justify-end">
+            <ExplorerNode person={data.focus} role="focus" onFocus={onFocus} />
+          </div>
+          <div className="flex items-center gap-1.5 px-2">
+            <div className="w-4 h-px bg-amber-500/25" />
+            <Diamond className="text-amber-500/30" size={8} />
+            <div className="w-4 h-px bg-amber-500/25" />
+          </div>
+          <div className="flex justify-start">
+            {data.partners[0].partner ? (
+              <ExplorerNode person={data.partners[0].partner} role="partner" onFocus={onFocus} />
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        /* No partners, or multiple partners */
+        <div className="flex items-start justify-center gap-3 flex-wrap py-3">
+          <ExplorerNode person={data.focus} role="focus" onFocus={onFocus} />
+          {hasPartners && (
+            <>
+              <div className="flex items-center self-center h-10">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-4 h-px bg-amber-500/25" />
+                  <Diamond className="text-amber-500/30" size={8} />
+                  <div className="w-4 h-px bg-amber-500/25" />
+                </div>
               </div>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              {data.partners.map(({ partner }) =>
-                partner ? (
-                  <ExplorerNode key={partner.id} person={partner} role="partner" onFocus={onFocus} />
-                ) : null
-              )}
-            </div>
-          </>
-        )}
-      </div>
+              <div className="flex flex-wrap justify-center gap-2">
+                {data.partners.map(({ partner }) =>
+                  partner ? (
+                    <ExplorerNode key={partner.id} person={partner} role="partner" onFocus={onFocus} />
+                  ) : null
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* ── Descendants ─────────────────────────────────────────────────── */}
       {hasDescendants && (

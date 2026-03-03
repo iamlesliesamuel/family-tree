@@ -29,7 +29,7 @@ export function TreeView({ profile }: TreeViewProps) {
         <>
           {parents.length === 2 ? (
             /* Two parents — show as a couple with horizontal connector */
-            <div className="flex flex-wrap justify-center items-center gap-2">
+            <div className="flex flex-nowrap items-center gap-2">
               <TreeNode person={parents[0].person} role="parent" badge={parents[0].is_adopted ? 'Adoptive' : undefined} />
               <div className="flex items-center gap-0.5">
                 <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
@@ -75,7 +75,7 @@ export function TreeView({ profile }: TreeViewProps) {
                 )}
 
                 {/* Couple row: person (first group) + horizontal connector + partner */}
-                <div className="flex flex-wrap justify-center items-center gap-2">
+                <div className="flex flex-nowrap items-center gap-2">
                   {i === 0 ? (
                     <TreeNode person={person} role="self" />
                   ) : (
