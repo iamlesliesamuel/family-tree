@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Light mode is default; dark mode adds `dark` class on <html> */
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-zinc-50 text-zinc-900 antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* ── Paper grain overlay ─────────────────────────────────────────────────
+     SVG noise texture layered over the viewport at pointer-events: none.
+     Gives a warm archival feel — like aged paper in light, parchment in dark.
+  ──────────────────────────────────────────────────────────────────────── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.030;   /* subtle on light backgrounds */
+    pointer-events: none;
+    z-index: 9999;
+  }
+  .dark body::after {
+    opacity: 0.042;   /* slightly more visible on dark backgrounds */
+  }
+
+  ::selection {
+    @apply bg-amber-500/30 text-amber-900;
+  }
+  .dark ::selection {
+    @apply bg-amber-500/25 text-amber-50;
+  }
+
+  /* ── Scrollbar — warm tones for both modes ───────────────────────────── */
+  ::-webkit-scrollbar        { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track  { background: transparent; }
+  ::-webkit-scrollbar-thumb        { background: #d9c09e; border-radius: 9999px; } /* zinc-200 light */
+  ::-webkit-scrollbar-thumb:hover  { background: #c4a47a; }                        /* zinc-300 light */
+
+  .dark ::-webkit-scrollbar-thumb       { background: #3d3120; }  /* zinc-700 dark */
+  .dark ::-webkit-scrollbar-thumb:hover { background: #5e4c32; }  /* zinc-600 dark */
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
