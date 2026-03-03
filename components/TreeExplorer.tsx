@@ -238,15 +238,14 @@ function DescendantBranch({
 }) {
   const children = childMap.get(person.id) ?? []
   const size: 'md' | 'sm' | 'xs' = depth === 1 ? 'md' : depth === 2 ? 'sm' : 'xs'
-  const colClass = depth === 1 ? 'w-[160px] flex-shrink-0' : ''
 
   return (
-    <div className={cn('flex flex-col items-center', colClass)}>
+    <div className="flex flex-col items-center flex-shrink-0">
       <ExplorerNode person={person} role="descendant" onFocus={onFocus} size={size} />
       {children.length > 0 && (
         <>
           <Connector size={size} />
-          <div className="flex flex-wrap justify-center gap-2 w-full">
+          <div className="flex flex-nowrap items-start justify-center gap-2">
             {children.map(child => (
               <DescendantBranch
                 key={child.id}
