@@ -330,24 +330,16 @@ function TreeCanvas({ data, ancestorLevels, descendantLevels, onFocus }: TreeCan
     <div className="flex flex-col items-center gap-0 w-full animate-fade-in">
 
       {/* ── Ancestor levels ──────────────────────────────────────────────── */}
-      {ancestorLevels.map((level, i) => (
+      {ancestorLevels.map((level) => (
         <div key={level.level} className="flex flex-col items-center w-full">
           <GenerationLabel level={level.level} />
           <GenerationRow people={level.people} role="ancestor" onFocus={onFocus} />
           <Connector />
-          {i < ancestorLevels.length - 1 && (
-            <div className="w-full max-w-xs border-t border-dashed border-zinc-200/60 dark:border-zinc-800/50 my-1" />
-          )}
         </div>
       ))}
 
-      {/* ── Ancestor → focus divider ─────────────────────────────────────── */}
-      {hasAncestors && (
-        <OrnamentalRule label="Focus" className="mb-4 max-w-sm" />
-      )}
-
       {/* ── Focus person + partners ───────────────────────────────────────── */}
-      <div className="flex items-start justify-center gap-3 flex-wrap py-2">
+      <div className="flex items-start justify-center gap-3 flex-wrap py-3">
         <ExplorerNode person={data.focus} role="focus" onFocus={onFocus} />
 
         {hasPartners && (
@@ -373,7 +365,6 @@ function TreeCanvas({ data, ancestorLevels, descendantLevels, onFocus }: TreeCan
       {/* ── Descendants ─────────────────────────────────────────────────── */}
       {hasDescendants && (
         <>
-          <OrnamentalRule label="Descendants" className="mt-5 mb-0" />
           <Connector />
           <div className="w-full overflow-x-auto">
             <div className="flex flex-nowrap items-start justify-center px-4 pb-10 min-w-min mx-auto">
@@ -429,6 +420,19 @@ function GenerationRow({ people, role, onFocus }: {
   role: 'ancestor' | 'descendant'
   onFocus: (id: string) => void
 }) {
+  if (people.length === 2) {
+    return (
+      <div className="flex flex-wrap justify-center items-center gap-2">
+        <ExplorerNode person={people[0]} role={role} onFocus={onFocus} />
+        <div className="flex items-center gap-1.5 self-center">
+          <div className="w-4 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
+          <Diamond className="text-amber-500/35" size={8} />
+          <div className="w-4 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
+        </div>
+        <ExplorerNode person={people[1]} role={role} onFocus={onFocus} />
+      </div>
+    )
+  }
   return (
     <div className="flex flex-wrap justify-center gap-2">
       {people.map(p => (

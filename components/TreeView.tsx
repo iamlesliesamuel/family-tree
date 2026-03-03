@@ -27,16 +27,25 @@ export function TreeView({ profile }: TreeViewProps) {
       {/* ── TIER 1: Parents ─────────────────────────────────────────── */}
       {hasParents && (
         <>
-          <div className="flex flex-wrap justify-center gap-3 pb-0">
-            {parents.map(({ person: parent, is_adopted }) => (
-              <TreeNode
-                key={parent.id}
-                person={parent}
-                role="parent"
-                badge={is_adopted ? 'Adoptive' : undefined}
-              />
-            ))}
-          </div>
+          {parents.length === 2 ? (
+            /* Two parents — show as a couple with horizontal connector */
+            <div className="flex flex-wrap justify-center items-center gap-2">
+              <TreeNode person={parents[0].person} role="parent" badge={parents[0].is_adopted ? 'Adoptive' : undefined} />
+              <div className="flex items-center gap-0.5">
+                <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
+                <ConnectorDiamond className="text-amber-500/40 flex-shrink-0" />
+                <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
+              </div>
+              <TreeNode person={parents[1].person} role="parent" badge={parents[1].is_adopted ? 'Adoptive' : undefined} />
+            </div>
+          ) : (
+            /* 1 or 3+ parents — centered row */
+            <div className="flex flex-wrap justify-center gap-3">
+              {parents.map(({ person: parent, is_adopted }) => (
+                <TreeNode key={parent.id} person={parent} role="parent" badge={is_adopted ? 'Adoptive' : undefined} />
+              ))}
+            </div>
+          )}
 
           <div className="flex flex-col items-center">
             <div className="w-px h-5 bg-zinc-300/70 dark:bg-zinc-700/60" />
