@@ -16,6 +16,7 @@ export function TreeNode({ person, role = 'self', badge, className }: TreeNodePr
   const initials = [person.first_name[0], person.last_name[0]].join('').toUpperCase()
   const photoUrl = getPersonPhotoUrl(person.profile_photo_path)
   const hasPhoto = Boolean(photoUrl)
+  const objectPosition = `${person.profile_photo_focus_x ?? 50}% ${person.profile_photo_focus_y ?? 50}%`
 
   return (
     <Link
@@ -60,7 +61,12 @@ export function TreeNode({ person, role = 'self', badge, className }: TreeNodePr
         >
           {photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={photoUrl} alt={`${name} profile`} className="w-full h-full object-cover" />
+            <img
+              src={photoUrl}
+              alt={`${name} profile`}
+              className="w-full h-full object-cover"
+              style={{ objectPosition }}
+            />
           ) : (
             initials
           )}

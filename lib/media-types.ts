@@ -4,6 +4,8 @@ export interface PersonPhoto {
   storage_path: string
   caption: string | null
   is_profile: boolean
+  focus_x: number
+  focus_y: number
   uploaded_at: string
 }
 

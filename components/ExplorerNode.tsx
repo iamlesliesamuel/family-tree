@@ -30,6 +30,7 @@ export function ExplorerNode({
   const isFocus  = role === 'focus'
   const photoUrl = getPersonPhotoUrl(person.profile_photo_path)
   const hasPhoto = Boolean(photoUrl)
+  const objectPosition = `${person.profile_photo_focus_x ?? 50}% ${person.profile_photo_focus_y ?? 50}%`
 
   const cardW   = hasPhoto
                 ? isFocus      ? 'w-[170px]'
@@ -109,7 +110,12 @@ export function ExplorerNode({
         )}>
           {photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={photoUrl} alt={`${getDisplayName(person)} profile`} className="w-full h-full object-cover" />
+            <img
+              src={photoUrl}
+              alt={`${getDisplayName(person)} profile`}
+              className="w-full h-full object-cover"
+              style={{ objectPosition }}
+            />
           ) : (
             initials
           )}

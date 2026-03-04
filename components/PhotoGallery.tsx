@@ -104,6 +104,25 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
     )
   }
 
+  async function updatePhotoFocus(photo: PersonPhoto, next: { focus_x?: number; focus_y?: number }) {
+    const res = await fetch(`/api/person/${personId}/photos/${photo.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        focus_x: next.focus_x ?? photo.focus_x ?? 50,
+        focus_y: next.focus_y ?? photo.focus_y ?? 50,
+      }),
+    })
+    const json = await readJsonSafe(res)
+    if (!res.ok) {
+      setError((typeof json.error === 'string' && json.error) || `Failed to update framing (${res.status})`)
+      return
+    }
+    const updated = (json.photo as PersonPhoto) ?? null
+    if (!updated) return
+    setPhotos((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+  }
+
   async function deletePhoto(photoId: string) {
     const res = await fetch(`/api/person/${personId}/photos/${photoId}`, { method: 'DELETE' })
     const json = await readJsonSafe(res)
@@ -175,6 +194,21 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
                     </button>
                   )}
                 </div>
+                {photo.is_profile && (
+                  <div className="space-y-2 rounded-md border border-zinc-200 dark:border-zinc-700 p-2">
+                    <p className="text-[11px] font-medium text-zinc-600 dark:text-zinc-300">Photo framing</p>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button type="button" onClick={() => void updatePhotoFocus(photo, { focus_x: 25 })} className="text-[11px] px-2 py-1 rounded border border-zinc-300 dark:border-zinc-700">Left</button>
+                      <button type="button" onClick={() => void updatePhotoFocus(photo, { focus_x: 50 })} className="text-[11px] px-2 py-1 rounded border border-zinc-300 dark:border-zinc-700">Center</button>
+                      <button type="button" onClick={() => void updatePhotoFocus(photo, { focus_x: 75 })} className="text-[11px] px-2 py-1 rounded border border-zinc-300 dark:border-zinc-700">Right</button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button type="button" onClick={() => void updatePhotoFocus(photo, { focus_y: 25 })} className="text-[11px] px-2 py-1 rounded border border-zinc-300 dark:border-zinc-700">Top</button>
+                      <button type="button" onClick={() => void updatePhotoFocus(photo, { focus_y: 50 })} className="text-[11px] px-2 py-1 rounded border border-zinc-300 dark:border-zinc-700">Middle</button>
+                      <button type="button" onClick={() => void updatePhotoFocus(photo, { focus_y: 75 })} className="text-[11px] px-2 py-1 rounded border border-zinc-300 dark:border-zinc-700">Bottom</button>
+                    </div>
+                  </div>
+                )}
                 {editingCaptionId === photo.id ? (
                   <div className="space-y-2">
                     <textarea

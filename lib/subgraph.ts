@@ -167,11 +167,20 @@ export async function fetchSubgraph(
   )
 
   const profileMap = await getProfilePhotoPathMap([focusId, ...allIds])
-  focus = { ...focus, profile_photo_path: profileMap.get(focus.id) ?? null }
+  const focusPhoto = profileMap.get(focus.id)
+  focus = {
+    ...focus,
+    profile_photo_path: focusPhoto?.storage_path ?? null,
+    profile_photo_focus_x: focusPhoto?.focus_x ?? 50,
+    profile_photo_focus_y: focusPhoto?.focus_y ?? 50,
+  }
   peopleMap.forEach((value, key) => {
+    const photo = profileMap.get(key)
     peopleMap.set(key, {
       ...value,
-      profile_photo_path: profileMap.get(key) ?? null,
+      profile_photo_path: photo?.storage_path ?? null,
+      profile_photo_focus_x: photo?.focus_x ?? 50,
+      profile_photo_focus_y: photo?.focus_y ?? 50,
     })
   })
 

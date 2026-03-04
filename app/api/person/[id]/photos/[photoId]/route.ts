@@ -10,7 +10,12 @@ export const runtime = 'nodejs'
 
 export async function PATCH(req: NextRequest, context: RouteContext) {
   const { id, photoId } = await context.params
-  const body = (await req.json()) as { caption?: string; is_profile?: boolean }
+  const body = (await req.json()) as {
+    caption?: string
+    is_profile?: boolean
+    focus_x?: number
+    focus_y?: number
+  }
   const admin = getSupabaseAdmin()
 
   if (typeof body.is_profile === 'boolean' && body.is_profile) {
@@ -23,9 +28,15 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     if (clear.error) return NextResponse.json({ error: clear.error.message }, { status: 400 })
   }
 
-  const patch: { caption?: string | null; is_profile?: boolean } = {}
+  const patch: { caption?: string | null; is_profile?: boolean; focus_x?: number; focus_y?: number } = {}
   if (typeof body.caption === 'string') patch.caption = body.caption.trim() || null
   if (typeof body.is_profile === 'boolean') patch.is_profile = body.is_profile
+  if (typeof body.focus_x === 'number' && Number.isFinite(body.focus_x)) {
+    patch.focus_x = Math.min(100, Math.max(0, Math.round(body.focus_x)))
+  }
+  if (typeof body.focus_y === 'number' && Number.isFinite(body.focus_y)) {
+    patch.focus_y = Math.min(100, Math.max(0, Math.round(body.focus_y)))
+  }
 
   const { data, error } = await admin
     .from('person_photos')

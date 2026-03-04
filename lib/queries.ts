@@ -158,14 +158,20 @@ export async function getPersonProfile(id: string): Promise<PersonProfile | null
   )
 
   const profileMap = await getProfilePhotoPathMap([id, ...allIds])
+  const selfPhoto = profileMap.get(id)
   const person = {
     ...(personRes.data as Person),
-    profile_photo_path: profileMap.get(id) ?? null,
+    profile_photo_path: selfPhoto?.storage_path ?? null,
+    profile_photo_focus_x: selfPhoto?.focus_x ?? 50,
+    profile_photo_focus_y: selfPhoto?.focus_y ?? 50,
   } as Person
   peopleMap.forEach((value, key) => {
+    const photo = profileMap.get(key)
     peopleMap.set(key, {
       ...value,
-      profile_photo_path: profileMap.get(key) ?? null,
+      profile_photo_path: photo?.storage_path ?? null,
+      profile_photo_focus_x: photo?.focus_x ?? 50,
+      profile_photo_focus_y: photo?.focus_y ?? 50,
     })
   })
 

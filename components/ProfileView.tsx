@@ -29,6 +29,7 @@ export function ProfileView({ profile, allPeople }: ProfileViewProps) {
   const hasParents  = parents.length > 0
   const initials    = [person.first_name[0], person.last_name[0]].join('').toUpperCase()
   const photoUrl    = getPersonPhotoUrl(person.profile_photo_path)
+  const objectPosition = `${person.profile_photo_focus_x ?? 50}% ${person.profile_photo_focus_y ?? 50}%`
 
   const lifespan =
     birthYear && deathYear ? `${birthYear} – ${deathYear}` :
@@ -56,7 +57,12 @@ export function ProfileView({ profile, allPeople }: ProfileViewProps) {
               dark:shadow-[inset_0_1px_0_rgba(212,176,70,0.07)] overflow-hidden`}>
               {photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={photoUrl} alt={`${getDisplayName(person)} profile`} className="w-full h-full object-cover" />
+                <img
+                  src={photoUrl}
+                  alt={`${getDisplayName(person)} profile`}
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition }}
+                />
               ) : (
                 <>
                   <span className="text-amber-600/60 dark:text-amber-500/50 text-[9px] tracking-[0.18em] uppercase mb-1">

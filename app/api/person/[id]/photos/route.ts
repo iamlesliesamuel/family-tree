@@ -11,11 +11,22 @@ export const runtime = 'nodejs'
 export async function GET(_req: NextRequest, context: RouteContext) {
   const { id } = await context.params
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('person_photos')
-    .select('id, person_id, storage_path, caption, is_profile, uploaded_at')
+    .select('id, person_id, storage_path, caption, is_profile, focus_x, focus_y, uploaded_at')
     .eq('person_id', id)
     .order('uploaded_at', { ascending: false })
+
+  if (error && (error.message.toLowerCase().includes('focus_x') || error.message.toLowerCase().includes('focus_y'))) {
+    const fallback = await supabase
+      .from('person_photos')
+      .select('id, person_id, storage_path, caption, is_profile, uploaded_at')
+      .eq('person_id', id)
+      .order('uploaded_at', { ascending: false })
+
+    data = (fallback.data ?? []).map((row) => ({ ...row, focus_x: 50, focus_y: 50 }))
+    error = fallback.error
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   return NextResponse.json({ photos: data ?? [] })
@@ -52,7 +63,14 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       const insert = await admin
         .from('person_photos')
-        .insert({ person_id: id, storage_path: storagePath, caption, is_profile: false })
+        .insert({
+          person_id: id,
+          storage_path: storagePath,
+          caption,
+          is_profile: false,
+          focus_x: 50,
+          focus_y: 50,
+        })
         .select('*')
         .single()
 
@@ -76,6 +94,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
         storage_path: body.storage_path,
         caption: body.caption?.trim() || null,
         is_profile: false,
+        focus_x: 50,
+        focus_y: 50,
       })
       .select('*')
       .single()

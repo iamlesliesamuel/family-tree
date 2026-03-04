@@ -10,6 +10,8 @@ export interface Person {
   gender: string | null
   notes: string | null
   profile_photo_path?: string | null
+  profile_photo_focus_x?: number | null
+  profile_photo_focus_y?: number | null
 }
 
 export interface Relationship {
