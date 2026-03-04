@@ -10,7 +10,7 @@ interface TreeViewProps {
   descendantDepth?: number
 }
 
-const FOCUS_TRUNK_SHIFT_PX = 77
+const FOCUS_TRUNK_SHIFT_PX = 75
 
 // ── Ornamental connector diamond ──────────────────────────────────────────────
 function ConnectorDiamond({ className }: { className?: string }) {
@@ -149,11 +149,6 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
     })
   })
 
-  const needsCoupleOffset = showParents && parents.length === 2
-  const coupleOffsetStyle = needsCoupleOffset
-    ? { transform: `translateX(${FOCUS_TRUNK_SHIFT_PX}px)` }
-    : undefined
-
   return (
     <div className="flex flex-col items-center gap-0 animate-fade-in w-full">
       {/* ── Higher ancestors (if depth > 1) ───────────────────────────── */}
@@ -165,7 +160,7 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
               <TreeNode key={p.id} person={p} role="parent" />
             ))}
           </div>
-          <div className="flex flex-col items-center" style={coupleOffsetStyle}>
+          <div className="flex flex-col items-center">
             <div className="w-px h-4 bg-zinc-300/70 dark:bg-zinc-700/60" />
             <ConnectorDiamond />
             <div className="w-px h-3 bg-zinc-300/70 dark:bg-zinc-700/60" />
@@ -180,7 +175,7 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
             /* Two parents — lineage anchored to left parent */
             <div
               className="flex flex-nowrap items-center gap-2"
-              style={coupleOffsetStyle}
+              style={{ transform: `translateX(${FOCUS_TRUNK_SHIFT_PX}px)` }}
             >
               <TreeNode person={parents[0].person} role="parent" badge={parents[0].is_adopted ? 'Adoptive' : undefined} />
               <div className="flex items-center gap-0.5">
@@ -199,7 +194,7 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
             </div>
           )}
 
-          <div className="flex flex-col items-center" style={coupleOffsetStyle}>
+          <div className="flex flex-col items-center">
             <div className="w-px h-5 bg-zinc-300/70 dark:bg-zinc-700/60" />
             <ConnectorDiamond />
             <div className="w-px h-4 bg-zinc-300/70 dark:bg-zinc-700/60" />
