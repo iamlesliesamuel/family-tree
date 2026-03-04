@@ -3,6 +3,7 @@ export interface PersonPhoto {
   person_id: string
   storage_path: string
   caption: string | null
+  is_profile: boolean
   uploaded_at: string
 }
 

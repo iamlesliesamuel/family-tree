@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { attachProfilePhotos, getProfilePhotoPathMap } from './profile-photos'
 import type {
   Person,
   PersonSummary,
@@ -18,7 +19,7 @@ export async function getAllPeople(): Promise<Person[]> {
     .order('first_name', { ascending: true })
 
   if (error) throw new Error(`getAllPeople: ${error.message}`)
-  return data ?? []
+  return attachProfilePhotos((data ?? []) as Person[])
 }
 
 // Compact summary list — used for explorer search (ships only what search needs)
@@ -43,7 +44,9 @@ export async function getFirstPerson(): Promise<Person | null> {
     .limit(1)
     .single()
 
-  return (data as Person) ?? null
+  if (!data) return null
+  const [person] = await attachProfilePhotos([data as Person])
+  return person ?? null
 }
 
 // Calls the get_default_root_person() Supabase RPC to find the oldest patriarch/matriarch.
@@ -58,7 +61,9 @@ export async function getDefaultRootPerson(): Promise<Person | null> {
     .eq('id', rootId as string)
     .single()
 
-  return (person as Person) ?? null
+  if (!person) return null
+  const [withProfilePhoto] = await attachProfilePhotos([person as Person])
+  return withProfilePhoto ?? null
 }
 
 export async function searchPeople(query: string): Promise<Person[]> {
@@ -72,7 +77,7 @@ export async function searchPeople(query: string): Promise<Person[]> {
     .limit(50)
 
   if (error) throw new Error(`searchPeople: ${error.message}`)
-  return data ?? []
+  return attachProfilePhotos((data ?? []) as Person[])
 }
 
 // ─── Person profile ───────────────────────────────────────────────────────────
@@ -98,7 +103,6 @@ export async function getPersonProfile(id: string): Promise<PersonProfile | null
 
   if (personRes.error || !personRes.data) return null
 
-  const person = personRes.data as Person
   const asChildRows = (asChildRes.data ?? []) as Array<{
     parent_id: string
     is_adopted: boolean
@@ -152,6 +156,18 @@ export async function getPersonProfile(id: string): Promise<PersonProfile | null
   const peopleMap = new Map<string, Person>(
     ((peopleRes.data ?? []) as Person[]).map((p) => [p.id, p])
   )
+
+  const profileMap = await getProfilePhotoPathMap([id, ...allIds])
+  const person = {
+    ...(personRes.data as Person),
+    profile_photo_path: profileMap.get(id) ?? null,
+  } as Person
+  peopleMap.forEach((value, key) => {
+    peopleMap.set(key, {
+      ...value,
+      profile_photo_path: profileMap.get(key) ?? null,
+    })
+  })
 
   // Build parents
   const parents: ParentEntry[] = asChildRows

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { getProfilePhotoPathMap } from './profile-photos'
 import type { Person, Relationship } from './types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -63,7 +64,7 @@ export async function fetchSubgraph(
 
   if (personRes.error || !personRes.data) return null
 
-  const focus = personRes.data as Person
+  let focus = personRes.data as Person
   const relRows = (relsRes.data ?? []) as Relationship[]
 
   // ── Link deduplication ─────────────────────────────────────────────────────
@@ -164,6 +165,15 @@ export async function fetchSubgraph(
   const peopleMap = new Map<string, Person>(
     ((peopleRes.data ?? []) as Person[]).map((p) => [p.id, p])
   )
+
+  const profileMap = await getProfilePhotoPathMap([focusId, ...allIds])
+  focus = { ...focus, profile_photo_path: profileMap.get(focus.id) ?? null }
+  peopleMap.forEach((value, key) => {
+    peopleMap.set(key, {
+      ...value,
+      profile_photo_path: profileMap.get(key) ?? null,
+    })
+  })
 
   // ── Build levels ───────────────────────────────────────────────────────────
   const levels: SubgraphLevel[] = []

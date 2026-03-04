@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { getDisplayName, getYearRange, type Person } from '@/lib/types'
+import { getPersonPhotoUrl } from '@/lib/storage-url'
 
 export type ExplorerRole = 'focus' | 'ancestor' | 'descendant' | 'partner'
 export type NodeSize = 'md' | 'sm' | 'xs'
@@ -27,6 +28,7 @@ export function ExplorerNode({
   const initials = [person.first_name[0], person.last_name[0]].join('').toUpperCase()
   const years    = getYearRange(person)
   const isFocus  = role === 'focus'
+  const photoUrl = getPersonPhotoUrl(person.profile_photo_path)
 
   const cardW   = isFocus      ? 'w-[140px]'
                 : size === 'md' ? 'w-[100px]'
@@ -82,7 +84,7 @@ export function ExplorerNode({
       >
         {/* Avatar */}
         <div className={cn(
-          'flex items-center justify-center rounded-lg font-semibold transition-colors flex-shrink-0',
+          'flex items-center justify-center rounded-lg font-semibold transition-colors flex-shrink-0 overflow-hidden',
           avatarSz,
           isFocus
             ? 'bg-amber-500/20 border border-amber-500/40 text-amber-700 dark:text-amber-300'
@@ -93,7 +95,12 @@ export function ExplorerNode({
                 'dark:group-hover/node:text-amber-400',
               ]
         )}>
-          {initials}
+          {photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photoUrl} alt={`${getDisplayName(person)} profile`} className="w-full h-full object-cover" />
+          ) : (
+            initials
+          )}
         </div>
 
         {/* Name */}

@@ -9,6 +9,7 @@ export interface Person {
   birth_place: string | null
   gender: string | null
   notes: string | null
+  profile_photo_path?: string | null
 }
 
 export interface Relationship {

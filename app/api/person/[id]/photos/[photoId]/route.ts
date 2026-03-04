@@ -10,12 +10,26 @@ export const runtime = 'nodejs'
 
 export async function PATCH(req: NextRequest, context: RouteContext) {
   const { id, photoId } = await context.params
-  const body = (await req.json()) as { caption?: string }
+  const body = (await req.json()) as { caption?: string; is_profile?: boolean }
   const admin = getSupabaseAdmin()
+
+  if (typeof body.is_profile === 'boolean' && body.is_profile) {
+    const clear = await admin
+      .from('person_photos')
+      .update({ is_profile: false })
+      .eq('person_id', id)
+      .neq('id', photoId)
+
+    if (clear.error) return NextResponse.json({ error: clear.error.message }, { status: 400 })
+  }
+
+  const patch: { caption?: string | null; is_profile?: boolean } = {}
+  if (typeof body.caption === 'string') patch.caption = body.caption.trim() || null
+  if (typeof body.is_profile === 'boolean') patch.is_profile = body.is_profile
 
   const { data, error } = await admin
     .from('person_photos')
-    .update({ caption: body.caption?.trim() || null })
+    .update(patch)
     .eq('id', photoId)
     .eq('person_id', id)
     .select('*')

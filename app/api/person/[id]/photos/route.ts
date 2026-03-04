@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
 
   const { data, error } = await supabase
     .from('person_photos')
-    .select('*')
+    .select('id, person_id, storage_path, caption, is_profile, uploaded_at')
     .eq('person_id', id)
     .order('uploaded_at', { ascending: false })
 
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       const insert = await admin
         .from('person_photos')
-        .insert({ person_id: id, storage_path: storagePath, caption })
+        .insert({ person_id: id, storage_path: storagePath, caption, is_profile: false })
         .select('*')
         .single()
 
@@ -75,6 +75,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         person_id: id,
         storage_path: body.storage_path,
         caption: body.caption?.trim() || null,
+        is_profile: false,
       })
       .select('*')
       .single()

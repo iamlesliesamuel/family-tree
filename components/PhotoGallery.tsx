@@ -81,6 +81,24 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
     setPhotos((prev) => prev.map((p) => (p.id === photoId ? ((json.photo as PersonPhoto) ?? p) : p)))
   }
 
+  async function setAsProfilePhoto(photoId: string) {
+    const res = await fetch(`/api/person/${personId}/photos/${photoId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_profile: true }),
+    })
+    const json = await readJsonSafe(res)
+    if (!res.ok) {
+      setError((typeof json.error === 'string' && json.error) || `Failed to set profile photo (${res.status})`)
+      return
+    }
+    const updated = (json.photo as PersonPhoto) ?? null
+    if (!updated) return
+    setPhotos((prev) =>
+      prev.map((p) => (p.id === updated.id ? updated : { ...p, is_profile: false }))
+    )
+  }
+
   async function deletePhoto(photoId: string) {
     const res = await fetch(`/api/person/${personId}/photos/${photoId}`, { method: 'DELETE' })
     const json = await readJsonSafe(res)
@@ -125,6 +143,21 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
                 <img src={photo.url} alt={photo.caption ?? 'Family photo'} className="w-full h-40 object-cover" />
               </button>
               <div className="p-2 flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  {photo.is_profile ? (
+                    <span className="text-[11px] px-2 py-0.5 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                      Profile photo
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void setAsProfilePhoto(photo.id)}
+                      className="text-xs px-2 py-1 rounded border border-zinc-300 dark:border-zinc-700"
+                    >
+                      Set as profile
+                    </button>
+                  )}
+                </div>
                 <input
                   defaultValue={photo.caption ?? ''}
                   placeholder="Caption"

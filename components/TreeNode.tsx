@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { getDisplayName, getYearRange, type Person } from '@/lib/types'
+import { getPersonPhotoUrl } from '@/lib/storage-url'
 
 interface TreeNodeProps {
   person: Person
@@ -13,6 +14,7 @@ export function TreeNode({ person, role = 'self', badge, className }: TreeNodePr
   const name = getDisplayName(person)
   const years = getYearRange(person)
   const initials = [person.first_name[0], person.last_name[0]].join('').toUpperCase()
+  const photoUrl = getPersonPhotoUrl(person.profile_photo_path)
 
   return (
     <Link
@@ -40,14 +42,19 @@ export function TreeNode({ person, role = 'self', badge, className }: TreeNodePr
         {/* Avatar — rounded-lg is more formal */}
         <div
           className={cn(
-            'flex items-center justify-center rounded-lg font-semibold transition-colors',
+            'flex items-center justify-center rounded-lg font-semibold transition-colors overflow-hidden',
             role === 'self'
               ? 'w-12 h-12 text-sm bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300'
               : 'w-9 h-9 text-xs bg-zinc-100 border border-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400',
             'group-hover:border-amber-500/30 group-hover:text-amber-600 dark:group-hover:text-amber-400'
           )}
         >
-          {initials}
+          {photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photoUrl} alt={`${name} profile`} className="w-full h-full object-cover" />
+          ) : (
+            initials
+          )}
         </div>
 
         {/* Name — Cormorant Garamond via font-serif */}
