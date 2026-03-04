@@ -104,61 +104,73 @@ alter table public.person_tags enable row level security;
 alter table public.relationship_notes enable row level security;
 
 -- person_photos
-create policy if not exists person_photos_select_all
+drop policy if exists person_photos_select_all on public.person_photos;
+create policy person_photos_select_all
   on public.person_photos for select
   using (true);
 
-create policy if not exists person_photos_write_auth
+drop policy if exists person_photos_write_auth on public.person_photos;
+create policy person_photos_write_auth
   on public.person_photos for all
   using (auth.role() = 'authenticated')
   with check (auth.role() = 'authenticated');
 
 -- person_documents
-create policy if not exists person_documents_select_all
+drop policy if exists person_documents_select_all on public.person_documents;
+create policy person_documents_select_all
   on public.person_documents for select
   using (true);
 
-create policy if not exists person_documents_write_auth
+drop policy if exists person_documents_write_auth on public.person_documents;
+create policy person_documents_write_auth
   on public.person_documents for all
   using (auth.role() = 'authenticated')
   with check (auth.role() = 'authenticated');
 
 -- person_notes
-create policy if not exists person_notes_select_all
+drop policy if exists person_notes_select_all on public.person_notes;
+create policy person_notes_select_all
   on public.person_notes for select
   using (true);
 
-create policy if not exists person_notes_write_auth
+drop policy if exists person_notes_write_auth on public.person_notes;
+create policy person_notes_write_auth
   on public.person_notes for all
   using (auth.role() = 'authenticated')
   with check (auth.role() = 'authenticated');
 
 -- tags
-create policy if not exists tags_select_all
+drop policy if exists tags_select_all on public.tags;
+create policy tags_select_all
   on public.tags for select
   using (true);
 
-create policy if not exists tags_write_auth
+drop policy if exists tags_write_auth on public.tags;
+create policy tags_write_auth
   on public.tags for all
   using (auth.role() = 'authenticated')
   with check (auth.role() = 'authenticated');
 
 -- person_tags
-create policy if not exists person_tags_select_all
+drop policy if exists person_tags_select_all on public.person_tags;
+create policy person_tags_select_all
   on public.person_tags for select
   using (true);
 
-create policy if not exists person_tags_write_auth
+drop policy if exists person_tags_write_auth on public.person_tags;
+create policy person_tags_write_auth
   on public.person_tags for all
   using (auth.role() = 'authenticated')
   with check (auth.role() = 'authenticated');
 
 -- relationship_notes
-create policy if not exists relationship_notes_select_all
+drop policy if exists relationship_notes_select_all on public.relationship_notes;
+create policy relationship_notes_select_all
   on public.relationship_notes for select
   using (true);
 
-create policy if not exists relationship_notes_write_auth
+drop policy if exists relationship_notes_write_auth on public.relationship_notes;
+create policy relationship_notes_write_auth
   on public.relationship_notes for all
   using (auth.role() = 'authenticated')
   with check (auth.role() = 'authenticated');
@@ -176,37 +188,45 @@ values ('family-documents', 'family-documents', false)
 on conflict (id) do update set public = excluded.public;
 
 -- person-photos policies
-create policy if not exists person_photos_bucket_public_read
+drop policy if exists person_photos_bucket_public_read on storage.objects;
+create policy person_photos_bucket_public_read
   on storage.objects for select
   using (bucket_id = 'person-photos');
 
-create policy if not exists person_photos_bucket_auth_insert
+drop policy if exists person_photos_bucket_auth_insert on storage.objects;
+create policy person_photos_bucket_auth_insert
   on storage.objects for insert
   with check (bucket_id = 'person-photos' and auth.role() = 'authenticated');
 
-create policy if not exists person_photos_bucket_auth_update
+drop policy if exists person_photos_bucket_auth_update on storage.objects;
+create policy person_photos_bucket_auth_update
   on storage.objects for update
   using (bucket_id = 'person-photos' and auth.role() = 'authenticated')
   with check (bucket_id = 'person-photos' and auth.role() = 'authenticated');
 
-create policy if not exists person_photos_bucket_auth_delete
+drop policy if exists person_photos_bucket_auth_delete on storage.objects;
+create policy person_photos_bucket_auth_delete
   on storage.objects for delete
   using (bucket_id = 'person-photos' and auth.role() = 'authenticated');
 
 -- family-documents policies (private bucket)
-create policy if not exists family_documents_bucket_auth_select
+drop policy if exists family_documents_bucket_auth_select on storage.objects;
+create policy family_documents_bucket_auth_select
   on storage.objects for select
   using (bucket_id = 'family-documents' and auth.role() = 'authenticated');
 
-create policy if not exists family_documents_bucket_auth_insert
+drop policy if exists family_documents_bucket_auth_insert on storage.objects;
+create policy family_documents_bucket_auth_insert
   on storage.objects for insert
   with check (bucket_id = 'family-documents' and auth.role() = 'authenticated');
 
-create policy if not exists family_documents_bucket_auth_update
+drop policy if exists family_documents_bucket_auth_update on storage.objects;
+create policy family_documents_bucket_auth_update
   on storage.objects for update
   using (bucket_id = 'family-documents' and auth.role() = 'authenticated')
   with check (bucket_id = 'family-documents' and auth.role() = 'authenticated');
 
-create policy if not exists family_documents_bucket_auth_delete
+drop policy if exists family_documents_bucket_auth_delete on storage.objects;
+create policy family_documents_bucket_auth_delete
   on storage.objects for delete
   using (bucket_id = 'family-documents' and auth.role() = 'authenticated');
