@@ -42,10 +42,13 @@ export function TreeNode({ person, role = 'self', badge, className }: TreeNodePr
         {/* Avatar — rounded-lg is more formal */}
         <div
           className={cn(
-            'flex items-center justify-center rounded-lg font-semibold transition-colors overflow-hidden',
+            'flex items-center justify-center font-semibold transition-colors overflow-hidden',
+            photoUrl ? 'rounded-full' : 'rounded-lg',
             role === 'self'
-              ? 'w-12 h-12 text-sm bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300'
-              : 'w-9 h-9 text-xs bg-zinc-100 border border-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400',
+              ? 'w-16 h-16 text-sm bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300'
+              : role === 'child'
+                ? 'w-11 h-11 text-xs bg-zinc-100 border border-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400'
+                : 'w-12 h-12 text-xs bg-zinc-100 border border-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400',
             'group-hover:border-amber-500/30 group-hover:text-amber-600 dark:group-hover:text-amber-400'
           )}
         >

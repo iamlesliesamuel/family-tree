@@ -42,10 +42,10 @@ export function ExplorerNode({
 
   const cardGap = (size === 'sm' || size === 'xs') ? 'gap-1' : 'gap-2'
 
-  const avatarSz = isFocus      ? 'w-12 h-12 text-sm'
-                 : size === 'md' ? 'w-8 h-8 text-xs'
-                 : size === 'sm' ? 'w-5 h-5 text-[10px]'
-                 :                 'w-4 h-4 text-[9px]'
+  const avatarSz = isFocus      ? 'w-14 h-14 text-sm'
+                 : size === 'md' ? 'w-12 h-12 text-xs'
+                 : size === 'sm' ? 'w-8 h-8 text-[10px]'
+                 :                 'w-6 h-6 text-[9px]'
 
   const nameText = isFocus      ? 'text-sm font-serif'
                  : size === 'xs' ? 'text-[9px]'
@@ -84,7 +84,8 @@ export function ExplorerNode({
       >
         {/* Avatar */}
         <div className={cn(
-          'flex items-center justify-center rounded-lg font-semibold transition-colors flex-shrink-0 overflow-hidden',
+          'flex items-center justify-center font-semibold transition-colors flex-shrink-0 overflow-hidden',
+          photoUrl ? 'rounded-full' : 'rounded-lg',
           avatarSz,
           isFocus
             ? 'bg-amber-500/20 border border-amber-500/40 text-amber-700 dark:text-amber-300'

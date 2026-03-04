@@ -7,6 +7,7 @@ import {
   type PersonSummary,
   type PersonProfile,
 } from '@/lib/types'
+import { getPersonPhotoUrl } from '@/lib/storage-url'
 import {
   DetailsEditorInline,
   AddParentInline,
@@ -27,6 +28,7 @@ export function ProfileView({ profile, allPeople }: ProfileViewProps) {
   const hasPartners = partnerGroups.length > 0
   const hasParents  = parents.length > 0
   const initials    = [person.first_name[0], person.last_name[0]].join('').toUpperCase()
+  const photoUrl    = getPersonPhotoUrl(person.profile_photo_path)
 
   const lifespan =
     birthYear && deathYear ? `${birthYear} – ${deathYear}` :
@@ -51,13 +53,20 @@ export function ProfileView({ profile, allPeople }: ProfileViewProps) {
               bg-white border-zinc-200/60
               shadow-[0_1px_4px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]
               dark:bg-zinc-900/80 dark:border-zinc-700/60
-              dark:shadow-[inset_0_1px_0_rgba(212,176,70,0.07)]`}>
-              <span className="text-amber-600/60 dark:text-amber-500/50 text-[9px] tracking-[0.18em] uppercase mb-1">
-                Record
-              </span>
-              <span className="font-serif text-2xl font-bold text-zinc-700 dark:text-zinc-200 leading-none">
-                {initials}
-              </span>
+              dark:shadow-[inset_0_1px_0_rgba(212,176,70,0.07)] overflow-hidden`}>
+              {photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={photoUrl} alt={`${getDisplayName(person)} profile`} className="w-full h-full object-cover" />
+              ) : (
+                <>
+                  <span className="text-amber-600/60 dark:text-amber-500/50 text-[9px] tracking-[0.18em] uppercase mb-1">
+                    Record
+                  </span>
+                  <span className="font-serif text-2xl font-bold text-zinc-700 dark:text-zinc-200 leading-none">
+                    {initials}
+                  </span>
+                </>
+              )}
             </div>
 
             <div className="flex-1 min-w-0">

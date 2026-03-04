@@ -22,6 +22,8 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  const [editingCaptionId, setEditingCaptionId] = useState<string | null>(null)
+  const [captionDraft, setCaptionDraft] = useState('')
 
   const photoItems = useMemo(
     () => photos.map((p) => ({ ...p, url: supabaseBrowser.storage.from('person-photos').getPublicUrl(p.storage_path).data.publicUrl })),
@@ -67,7 +69,7 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
     }
   }
 
-  async function updateCaption(photoId: string, caption: string) {
+  async function updateCaption(photoId: string, caption: string): Promise<PersonPhoto | null> {
     const res = await fetch(`/api/person/${personId}/photos/${photoId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -76,9 +78,12 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
     const json = await readJsonSafe(res)
     if (!res.ok) {
       setError((typeof json.error === 'string' && json.error) || `Failed to update caption (${res.status})`)
-      return
+      return null
     }
-    setPhotos((prev) => prev.map((p) => (p.id === photoId ? ((json.photo as PersonPhoto) ?? p) : p)))
+    const updated = (json.photo as PersonPhoto) ?? null
+    if (!updated) return null
+    setPhotos((prev) => prev.map((p) => (p.id === photoId ? updated : p)))
+    return updated
   }
 
   async function setAsProfilePhoto(photoId: string) {
@@ -107,6 +112,18 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
       return
     }
     setPhotos((prev) => prev.filter((p) => p.id !== photoId))
+  }
+
+  function startEditCaption(photo: PersonPhoto) {
+    setEditingCaptionId(photo.id)
+    setCaptionDraft(photo.caption ?? '')
+  }
+
+  async function saveCaption(photoId: string) {
+    const saved = await updateCaption(photoId, captionDraft)
+    if (!saved) return
+    setEditingCaptionId(null)
+    setCaptionDraft('')
   }
 
   return (
@@ -158,14 +175,53 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
                     </button>
                   )}
                 </div>
-                <input
-                  defaultValue={photo.caption ?? ''}
-                  placeholder="Caption"
-                  className="text-xs rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-2 py-1"
-                  onBlur={(e) => {
-                    void updateCaption(photo.id, e.currentTarget.value)
-                  }}
-                />
+                {editingCaptionId === photo.id ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={captionDraft}
+                      onChange={(e) => setCaptionDraft(e.target.value)}
+                      rows={3}
+                      placeholder="Write a caption..."
+                      className="w-full text-sm rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-2 py-1.5 resize-y"
+                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void saveCaption(photo.id)}
+                        className="text-xs px-2 py-1 rounded border border-zinc-300 dark:border-zinc-700"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCaptionId(null)
+                          setCaptionDraft('')
+                        }}
+                        className="text-xs px-2 py-1 rounded border border-zinc-300/60 dark:border-zinc-700/60"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {photo.caption ? (
+                      <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap break-words">
+                        {photo.caption}
+                      </p>
+                    ) : (
+                      <p className="text-xs italic text-zinc-500">No caption yet.</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => startEditCaption(photo)}
+                      className="text-xs px-2 py-1 rounded border border-zinc-300 dark:border-zinc-700"
+                    >
+                      {photo.caption ? 'Edit caption' : 'Add caption'}
+                    </button>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => void deletePhoto(photo.id)}
