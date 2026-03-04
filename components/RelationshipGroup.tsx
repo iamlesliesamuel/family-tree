@@ -24,9 +24,9 @@ export function RelationshipGroup({ group, index }: RelationshipGroupProps) {
       style={{ animationDelay: `${index * 60}ms`, animationFillMode: 'both' }}>
 
       {/* Partner header */}
-      <div className="px-4 py-3 border-b border-zinc-200/50 bg-zinc-50
-        dark:border-zinc-700/30 dark:bg-zinc-900">
-        {partner ? (
+      {partner && (
+        <div className="px-4 py-3 border-b border-zinc-200/50 bg-zinc-50
+          dark:border-zinc-700/30 dark:bg-zinc-900">
           <div className="flex items-start gap-3">
             {/* Avatar */}
             <div className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg
@@ -76,21 +76,8 @@ export function RelationshipGroup({ group, index }: RelationshipGroupProps) {
               )}
             </div>
           </div>
-        ) : (
-          /* Unknown partner */
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg
-              bg-zinc-100/50 border border-dashed border-zinc-300 text-zinc-400
-              dark:bg-zinc-800/50 dark:border-zinc-700 dark:text-zinc-600">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round"
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <p className="font-serif text-sm text-zinc-500 italic">Other parent unknown</p>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Children */}
       {hasChildren ? (
