@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabaseBrowser } from '@/lib/supabase-browser'
 import type { PersonDocument } from '@/lib/media-types'
 
 const DOCUMENT_TYPES = ['funeral_program', 'birth_certificate', 'marriage_certificate', 'obituary', 'other'] as const
@@ -17,7 +16,6 @@ export function DocumentList({ personId }: DocumentListProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [canUpload, setCanUpload] = useState(false)
 
   async function loadDocuments() {
     setLoading(true)
@@ -32,7 +30,6 @@ export function DocumentList({ personId }: DocumentListProps) {
   }
 
   useEffect(() => {
-    supabaseBrowser.auth.getUser().then(({ data }) => setCanUpload(Boolean(data.user)))
     void loadDocuments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [personId])
@@ -41,17 +38,13 @@ export function DocumentList({ personId }: DocumentListProps) {
     setUploading(true)
     setError(null)
     try {
-      const ext = file.name.split('.').pop() || 'pdf'
-      const docId = crypto.randomUUID()
-      const storagePath = `${personId}/${docId}.${ext}`
-
-      const upload = await supabaseBrowser.storage.from('family-documents').upload(storagePath, file)
-      if (upload.error) throw new Error(upload.error.message)
-
+      const form = new FormData()
+      form.append('file', file)
+      form.append('title', title)
+      form.append('document_type', documentType)
       const save = await fetch(`/api/person/${personId}/documents`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, storage_path: storagePath, document_type: documentType }),
+        body: form,
       })
       const json = await save.json()
       if (!save.ok) throw new Error(json.error ?? 'Failed to save document metadata')
@@ -90,11 +83,7 @@ export function DocumentList({ personId }: DocumentListProps) {
         <h2 className="font-serif text-lg text-zinc-800 dark:text-zinc-100">Documents</h2>
       </div>
 
-      {canUpload ? (
-        <DocumentUploadForm uploading={uploading} onSubmit={uploadDocument} />
-      ) : (
-        <p className="text-xs text-zinc-500 mb-3">Sign in is required to upload or delete documents.</p>
-      )}
+      <DocumentUploadForm uploading={uploading} onSubmit={uploadDocument} />
 
       {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
       {loading ? (
@@ -111,7 +100,7 @@ export function DocumentList({ personId }: DocumentListProps) {
               </div>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => void downloadDocument(doc.id)} className="text-xs px-2 py-1 rounded border border-zinc-300 dark:border-zinc-700">Download</button>
-                <button type="button" disabled={!canUpload} onClick={() => void deleteDocument(doc.id)} className="text-xs px-2 py-1 rounded text-red-600 dark:text-red-400 disabled:opacity-40">Delete</button>
+                <button type="button" onClick={() => void deleteDocument(doc.id)} className="text-xs px-2 py-1 rounded text-red-600 dark:text-red-400">Delete</button>
               </div>
             </div>
           ))}

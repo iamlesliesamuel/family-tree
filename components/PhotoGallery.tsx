@@ -14,7 +14,6 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
-  const [canUpload, setCanUpload] = useState(false)
 
   const photoItems = useMemo(
     () => photos.map((p) => ({ ...p, url: supabaseBrowser.storage.from('person-photos').getPublicUrl(p.storage_path).data.publicUrl })),
@@ -35,8 +34,7 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
   }
 
   useEffect(() => {
-    supabaseBrowser.auth.getUser().then(({ data }) => setCanUpload(Boolean(data.user)))
-    loadPhotos()
+    void loadPhotos()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [personId])
 
@@ -44,17 +42,11 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
     setUploading(true)
     setError(null)
     try {
-      const ext = file.name.split('.').pop() || 'jpg'
-      const photoId = crypto.randomUUID()
-      const storagePath = `${personId}/${photoId}.${ext}`
-
-      const uploadRes = await supabaseBrowser.storage.from('person-photos').upload(storagePath, file)
-      if (uploadRes.error) throw new Error(uploadRes.error.message)
-
+      const form = new FormData()
+      form.append('file', file)
       const metaRes = await fetch(`/api/person/${personId}/photos`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storage_path: storagePath }),
+        body: form,
       })
       const metaJson = await metaRes.json()
       if (!metaRes.ok) throw new Error(metaJson.error ?? 'Failed to save photo metadata')
@@ -95,13 +87,13 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
     <section className="rounded-xl border border-zinc-200/70 bg-white/70 dark:bg-zinc-900/50 dark:border-zinc-700/50 p-4">
       <div className="flex items-center justify-between gap-3 mb-4">
         <h2 className="font-serif text-lg text-zinc-800 dark:text-zinc-100">Photos</h2>
-        <label className={`px-3 py-1.5 text-xs rounded-md border ${canUpload ? 'cursor-pointer border-zinc-300 dark:border-zinc-700' : 'opacity-50 border-zinc-300 dark:border-zinc-700 cursor-not-allowed'}`}>
+        <label className="px-3 py-1.5 text-xs rounded-md border cursor-pointer border-zinc-300 dark:border-zinc-700">
           {uploading ? 'Uploading...' : 'Upload Photo'}
           <input
             type="file"
             accept="image/*"
             className="hidden"
-            disabled={!canUpload || uploading}
+            disabled={uploading}
             onChange={(e) => {
               const file = e.target.files?.[0]
               if (file) void handleUpload(file)
@@ -111,9 +103,6 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
         </label>
       </div>
 
-      {!canUpload && (
-        <p className="text-xs text-zinc-500 mb-3">Sign in is required to upload or edit photos.</p>
-      )}
       {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
       {loading ? (
         <p className="text-sm text-zinc-500">Loading photos…</p>
@@ -133,16 +122,13 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
                   placeholder="Caption"
                   className="text-xs rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-2 py-1"
                   onBlur={(e) => {
-                    if (!canUpload) return
                     void updateCaption(photo.id, e.currentTarget.value)
                   }}
-                  disabled={!canUpload}
                 />
                 <button
                   type="button"
                   onClick={() => void deletePhoto(photo.id)}
-                  disabled={!canUpload}
-                  className="text-xs text-red-600 dark:text-red-400 disabled:opacity-40 self-start"
+                  className="text-xs text-red-600 dark:text-red-400 self-start"
                 >
                   Delete
                 </button>

@@ -11,12 +11,13 @@ export const runtime = 'nodejs'
 export async function PATCH(req: NextRequest, context: RouteContext) {
   const { id, documentId } = await context.params
   const body = (await req.json()) as { title?: string; document_type?: string }
+  const admin = getSupabaseAdmin()
 
   const patch: Record<string, string> = {}
   if (typeof body.title === 'string') patch.title = body.title.trim()
   if (typeof body.document_type === 'string') patch.document_type = body.document_type
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from('person_documents')
     .update(patch)
     .eq('id', documentId)
@@ -30,8 +31,9 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
 export async function DELETE(_req: NextRequest, context: RouteContext) {
   const { id, documentId } = await context.params
+  const admin = getSupabaseAdmin()
 
-  const { data: doc, error: fetchError } = await supabase
+  const { data: doc, error: fetchError } = await admin
     .from('person_documents')
     .select('*')
     .eq('id', documentId)
@@ -42,15 +44,10 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: fetchError?.message ?? 'Document not found' }, { status: 404 })
   }
 
-  const dbDelete = await supabase.from('person_documents').delete().eq('id', documentId).eq('person_id', id)
+  const dbDelete = await admin.from('person_documents').delete().eq('id', documentId).eq('person_id', id)
   if (dbDelete.error) return NextResponse.json({ error: dbDelete.error.message }, { status: 400 })
 
-  try {
-    const admin = getSupabaseAdmin()
-    await admin.storage.from('family-documents').remove([doc.storage_path])
-  } catch {
-    await supabase.storage.from('family-documents').remove([doc.storage_path])
-  }
+  await admin.storage.from('family-documents').remove([doc.storage_path])
 
   return NextResponse.json({ ok: true })
 }
