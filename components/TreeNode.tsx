@@ -48,7 +48,7 @@ export function TreeNode({ person, role = 'self', badge, className }: TreeNodePr
             hasPhoto
               ? [
                   'rounded-lg w-full',
-                  role === 'self' ? 'h-28' : role === 'child' ? 'h-20' : 'h-24',
+                  'aspect-square',
                   'bg-zinc-100 border border-zinc-200 dark:bg-zinc-800 dark:border-zinc-700',
                 ]
               : role === 'self'

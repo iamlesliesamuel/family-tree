@@ -50,10 +50,7 @@ export function ExplorerNode({
   const cardGap = (size === 'sm' || size === 'xs') ? 'gap-1' : 'gap-2'
 
   const avatarSz = hasPhoto
-                 ? isFocus      ? 'w-full h-28'
-                   : size === 'md' ? 'w-full h-20'
-                   : size === 'sm' ? 'w-full h-14'
-                   :                 'w-full h-10'
+                 ? 'w-full aspect-square'
                  : isFocus      ? 'w-14 h-14 text-sm'
                    : size === 'md' ? 'w-12 h-12 text-xs'
                    : size === 'sm' ? 'w-8 h-8 text-[10px]'
