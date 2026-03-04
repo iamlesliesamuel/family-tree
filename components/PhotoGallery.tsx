@@ -8,6 +8,14 @@ interface PhotoGalleryProps {
   personId: string
 }
 
+async function readJsonSafe(res: Response): Promise<Record<string, unknown>> {
+  try {
+    return (await res.json()) as Record<string, unknown>
+  } catch {
+    return {}
+  }
+}
+
 export function PhotoGallery({ personId }: PhotoGalleryProps) {
   const [photos, setPhotos] = useState<PersonPhoto[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,11 +31,11 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
   async function loadPhotos() {
     setLoading(true)
     const res = await fetch(`/api/person/${personId}/photos`, { cache: 'no-store' })
-    const json = await res.json()
+    const json = await readJsonSafe(res)
     if (!res.ok) {
-      setError(json.error ?? 'Failed to load photos')
+      setError((typeof json.error === 'string' && json.error) || `Failed to load photos (${res.status})`)
     } else {
-      setPhotos(json.photos ?? [])
+      setPhotos(Array.isArray(json.photos) ? (json.photos as PersonPhoto[]) : [])
       setError(null)
     }
     setLoading(false)
@@ -48,8 +56,8 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
         method: 'POST',
         body: form,
       })
-      const metaJson = await metaRes.json()
-      if (!metaRes.ok) throw new Error(metaJson.error ?? 'Failed to save photo metadata')
+      const metaJson = await readJsonSafe(metaRes)
+      if (!metaRes.ok) throw new Error((typeof metaJson.error === 'string' && metaJson.error) || `Upload failed (${metaRes.status})`)
 
       await loadPhotos()
     } catch (err) {
@@ -65,19 +73,19 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ caption }),
     })
-    const json = await res.json()
+    const json = await readJsonSafe(res)
     if (!res.ok) {
-      setError(json.error ?? 'Failed to update caption')
+      setError((typeof json.error === 'string' && json.error) || `Failed to update caption (${res.status})`)
       return
     }
-    setPhotos((prev) => prev.map((p) => (p.id === photoId ? json.photo : p)))
+    setPhotos((prev) => prev.map((p) => (p.id === photoId ? ((json.photo as PersonPhoto) ?? p) : p)))
   }
 
   async function deletePhoto(photoId: string) {
     const res = await fetch(`/api/person/${personId}/photos/${photoId}`, { method: 'DELETE' })
-    const json = await res.json()
+    const json = await readJsonSafe(res)
     if (!res.ok) {
-      setError(json.error ?? 'Failed to delete photo')
+      setError((typeof json.error === 'string' && json.error) || `Failed to delete photo (${res.status})`)
       return
     }
     setPhotos((prev) => prev.filter((p) => p.id !== photoId))

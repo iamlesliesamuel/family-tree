@@ -11,6 +11,14 @@ interface DocumentListProps {
   personId: string
 }
 
+async function readJsonSafe(res: Response): Promise<Record<string, unknown>> {
+  try {
+    return (await res.json()) as Record<string, unknown>
+  } catch {
+    return {}
+  }
+}
+
 export function DocumentList({ personId }: DocumentListProps) {
   const [docs, setDocs] = useState<PersonDocument[]>([])
   const [loading, setLoading] = useState(true)
@@ -20,10 +28,10 @@ export function DocumentList({ personId }: DocumentListProps) {
   async function loadDocuments() {
     setLoading(true)
     const res = await fetch(`/api/person/${personId}/documents`, { cache: 'no-store' })
-    const json = await res.json()
-    if (!res.ok) setError(json.error ?? 'Failed to load documents')
+    const json = await readJsonSafe(res)
+    if (!res.ok) setError((typeof json.error === 'string' && json.error) || `Failed to load documents (${res.status})`)
     else {
-      setDocs(json.documents ?? [])
+      setDocs(Array.isArray(json.documents) ? (json.documents as PersonDocument[]) : [])
       setError(null)
     }
     setLoading(false)
@@ -46,8 +54,8 @@ export function DocumentList({ personId }: DocumentListProps) {
         method: 'POST',
         body: form,
       })
-      const json = await save.json()
-      if (!save.ok) throw new Error(json.error ?? 'Failed to save document metadata')
+      const json = await readJsonSafe(save)
+      if (!save.ok) throw new Error((typeof json.error === 'string' && json.error) || `Failed to save document (${save.status})`)
 
       await loadDocuments()
     } catch (err) {
@@ -59,9 +67,9 @@ export function DocumentList({ personId }: DocumentListProps) {
 
   async function deleteDocument(documentId: string) {
     const res = await fetch(`/api/person/${personId}/documents/${documentId}`, { method: 'DELETE' })
-    const json = await res.json()
+    const json = await readJsonSafe(res)
     if (!res.ok) {
-      setError(json.error ?? 'Failed to delete document')
+      setError((typeof json.error === 'string' && json.error) || `Failed to delete document (${res.status})`)
       return
     }
     setDocs((prev) => prev.filter((d) => d.id !== documentId))
@@ -69,12 +77,13 @@ export function DocumentList({ personId }: DocumentListProps) {
 
   async function downloadDocument(documentId: string) {
     const res = await fetch(`/api/person/${personId}/documents/${documentId}/signed-url`, { cache: 'no-store' })
-    const json = await res.json()
-    if (!res.ok || !json.url) {
-      setError(json.error ?? 'Could not generate download URL')
+    const json = await readJsonSafe(res)
+    const url = typeof json.url === 'string' ? json.url : null
+    if (!res.ok || !url) {
+      setError((typeof json.error === 'string' && json.error) || `Could not generate download URL (${res.status})`)
       return
     }
-    window.open(json.url, '_blank', 'noopener,noreferrer')
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   return (

@@ -22,62 +22,67 @@ export async function GET(_req: NextRequest, context: RouteContext) {
 }
 
 export async function POST(req: NextRequest, context: RouteContext) {
-  const { id } = await context.params
-  const contentType = req.headers.get('content-type') ?? ''
-  const admin = getSupabaseAdmin()
+  try {
+    const { id } = await context.params
+    const contentType = req.headers.get('content-type') ?? ''
+    const admin = getSupabaseAdmin()
 
-  if (contentType.includes('multipart/form-data')) {
-    const form = await req.formData()
-    const file = form.get('file')
-    const captionValue = form.get('caption')
-    const caption = typeof captionValue === 'string' && captionValue.trim() ? captionValue.trim() : null
+    if (contentType.includes('multipart/form-data')) {
+      const form = await req.formData()
+      const file = form.get('file')
+      const captionValue = form.get('caption')
+      const caption = typeof captionValue === 'string' && captionValue.trim() ? captionValue.trim() : null
 
-    if (!(file instanceof File)) {
-      return NextResponse.json({ error: 'file is required' }, { status: 400 })
+      if (!(file instanceof File)) {
+        return NextResponse.json({ error: 'file is required' }, { status: 400 })
+      }
+
+      const fileExt = file.name.includes('.') ? file.name.split('.').pop() : undefined
+      const safeExt = (fileExt ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+      const photoId = crypto.randomUUID()
+      const storagePath = `${id}/${photoId}.${safeExt}`
+
+      const upload = await admin.storage
+        .from('person-photos')
+        .upload(storagePath, file, { contentType: file.type || undefined, upsert: false })
+
+      if (upload.error) {
+        return NextResponse.json({ error: upload.error.message }, { status: 400 })
+      }
+
+      const insert = await admin
+        .from('person_photos')
+        .insert({ person_id: id, storage_path: storagePath, caption })
+        .select('*')
+        .single()
+
+      if (insert.error) {
+        await admin.storage.from('person-photos').remove([storagePath])
+        return NextResponse.json({ error: insert.error.message }, { status: 400 })
+      }
+
+      return NextResponse.json({ photo: insert.data }, { status: 201 })
     }
 
-    const fileExt = file.name.includes('.') ? file.name.split('.').pop() : undefined
-    const safeExt = (fileExt ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
-    const photoId = crypto.randomUUID()
-    const storagePath = `${id}/${photoId}.${safeExt}`
-
-    const upload = await admin.storage
-      .from('person-photos')
-      .upload(storagePath, file, { contentType: file.type || undefined, upsert: false })
-
-    if (upload.error) {
-      return NextResponse.json({ error: upload.error.message }, { status: 400 })
+    const body = (await req.json()) as { storage_path?: string; caption?: string }
+    if (!body.storage_path) {
+      return NextResponse.json({ error: 'storage_path is required' }, { status: 400 })
     }
 
-    const insert = await admin
+    const { data, error } = await admin
       .from('person_photos')
-      .insert({ person_id: id, storage_path: storagePath, caption })
+      .insert({
+        person_id: id,
+        storage_path: body.storage_path,
+        caption: body.caption?.trim() || null,
+      })
       .select('*')
       .single()
 
-    if (insert.error) {
-      await admin.storage.from('person-photos').remove([storagePath])
-      return NextResponse.json({ error: insert.error.message }, { status: 400 })
-    }
-
-    return NextResponse.json({ photo: insert.data }, { status: 201 })
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ photo: data }, { status: 201 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to upload photo'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
-
-  const body = (await req.json()) as { storage_path?: string; caption?: string }
-  if (!body.storage_path) {
-    return NextResponse.json({ error: 'storage_path is required' }, { status: 400 })
-  }
-
-  const { data, error } = await admin
-    .from('person_photos')
-    .insert({
-      person_id: id,
-      storage_path: body.storage_path,
-      caption: body.caption?.trim() || null,
-    })
-    .select('*')
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json({ photo: data }, { status: 201 })
 }
