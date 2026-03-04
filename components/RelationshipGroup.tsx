@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ChildList } from './ChildList'
+import { RelationshipNotes } from './RelationshipNotes'
 import {
   getDisplayName,
   getYearRange,
@@ -69,6 +70,10 @@ export function RelationshipGroup({ group, index }: RelationshipGroupProps) {
                   </span>
                 )}
               </div>
+
+              {relationship && (
+                <RelationshipNotes relationshipId={relationship.id} />
+              )}
             </div>
           </div>
         ) : (

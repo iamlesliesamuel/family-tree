@@ -6,16 +6,21 @@ import { getDisplayName, getYearRange } from '@/lib/types'
 import { fetchSubgraph } from '@/lib/subgraph'
 import { ProfileView } from '@/components/ProfileView'
 import { TreeView } from '@/components/TreeView'
-import { ViewToggle } from '@/components/ViewToggle'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { PersonTreeDepthControls } from '@/components/PersonTreeDepthControls'
+import { PersonTabs } from '@/components/PersonTabs'
+import { PhotoGallery } from '@/components/PhotoGallery'
+import { TimelineView } from '@/components/TimelineView'
+import { NotesEditor } from '@/components/NotesEditor'
+import { DocumentList } from '@/components/DocumentList'
+import { TagManager } from '@/components/TagManager'
 
 export const dynamic = 'force-dynamic'
 
 // Next.js 15: params and searchParams are Promises
 interface PageProps {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ view?: string; ancestorDepth?: string; descendantDepth?: string }>
+  searchParams: Promise<{ view?: string; tab?: string; ancestorDepth?: string; descendantDepth?: string }>
 }
 
 function parseDepth(value: string | undefined, fallback = 2) {
@@ -39,15 +44,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PersonPage({ params, searchParams }: PageProps) {
   const { id } = await params
-  const { view, ancestorDepth: ancestorDepthParam, descendantDepth: descendantDepthParam } = await searchParams
+  const { view, tab, ancestorDepth: ancestorDepthParam, descendantDepth: descendantDepthParam } = await searchParams
 
   const ancestorDepth = parseDepth(ancestorDepthParam, 2)
   const descendantDepth = parseDepth(descendantDepthParam, 2)
-  const isTree = view === 'tree'
+  const activeTab = (
+    tab ??
+    (view === 'tree' ? 'tree' : 'profile')
+  ) as 'profile' | 'tree' | 'photos' | 'timeline' | 'notes' | 'documents' | 'tags'
+  const isTree = activeTab === 'tree'
+  const needsProfile = activeTab === 'profile'
 
   const [profile, allPeople, subgraph] = await Promise.all([
     getPersonProfile(id),
-    getAllPeopleSummary(),
+    needsProfile ? getAllPeopleSummary() : Promise.resolve([]),
     isTree ? fetchSubgraph(id, ancestorDepth, descendantDepth) : Promise.resolve(null),
   ])
   if (!profile) notFound()
@@ -89,9 +99,11 @@ export default async function PersonPage({ params, searchParams }: PageProps) {
             )}
           </div>
 
-          <ViewToggle personId={id} currentView={isTree ? 'tree' : 'profile'} />
           <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-700 mx-0.5" />
           <ThemeToggle />
+        </div>
+        <div className="max-w-2xl mx-auto px-4 pb-3">
+          <PersonTabs activeTab={activeTab} />
         </div>
         {isTree && (
           <div className="max-w-2xl mx-auto px-4 pb-3">
@@ -105,15 +117,25 @@ export default async function PersonPage({ params, searchParams }: PageProps) {
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
-        {isTree ? (
+        {activeTab === 'tree' ? (
           <TreeView
             profile={profile}
             subgraph={subgraph}
             ancestorDepth={ancestorDepth}
             descendantDepth={descendantDepth}
           />
-        ) : (
+        ) : activeTab === 'profile' ? (
           <ProfileView profile={profile} allPeople={allPeople} />
+        ) : activeTab === 'photos' ? (
+          <PhotoGallery personId={id} />
+        ) : activeTab === 'timeline' ? (
+          <TimelineView personId={id} />
+        ) : activeTab === 'notes' ? (
+          <NotesEditor personId={id} />
+        ) : activeTab === 'documents' ? (
+          <DocumentList personId={id} />
+        ) : (
+          <TagManager personId={id} />
         )}
       </div>
     </main>
