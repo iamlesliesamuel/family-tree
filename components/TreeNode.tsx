@@ -15,6 +15,7 @@ export function TreeNode({ person, role = 'self', badge, className }: TreeNodePr
   const years = getYearRange(person)
   const initials = [person.first_name[0], person.last_name[0]].join('').toUpperCase()
   const photoUrl = getPersonPhotoUrl(person.profile_photo_path)
+  const hasPhoto = Boolean(photoUrl)
 
   return (
     <Link
@@ -43,12 +44,17 @@ export function TreeNode({ person, role = 'self', badge, className }: TreeNodePr
         <div
           className={cn(
             'flex items-center justify-center font-semibold transition-colors overflow-hidden',
-            photoUrl ? 'rounded-full' : 'rounded-lg',
-            role === 'self'
-              ? 'w-16 h-16 text-sm bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300'
-              : role === 'child'
-                ? 'w-11 h-11 text-xs bg-zinc-100 border border-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400'
-                : 'w-12 h-12 text-xs bg-zinc-100 border border-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400',
+            hasPhoto
+              ? [
+                  'rounded-lg w-full',
+                  role === 'self' ? 'h-28' : role === 'child' ? 'h-20' : 'h-24',
+                  'bg-zinc-100 border border-zinc-200 dark:bg-zinc-800 dark:border-zinc-700',
+                ]
+              : role === 'self'
+                ? 'rounded-lg w-16 h-16 text-sm bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300'
+                : role === 'child'
+                  ? 'rounded-full w-11 h-11 text-xs bg-zinc-100 border border-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400'
+                  : 'rounded-full w-12 h-12 text-xs bg-zinc-100 border border-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400',
             'group-hover:border-amber-500/30 group-hover:text-amber-600 dark:group-hover:text-amber-400'
           )}
         >

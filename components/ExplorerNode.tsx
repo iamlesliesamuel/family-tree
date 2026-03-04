@@ -29,11 +29,17 @@ export function ExplorerNode({
   const years    = getYearRange(person)
   const isFocus  = role === 'focus'
   const photoUrl = getPersonPhotoUrl(person.profile_photo_path)
+  const hasPhoto = Boolean(photoUrl)
 
-  const cardW   = isFocus      ? 'w-[140px]'
-                : size === 'md' ? 'w-[100px]'
-                : size === 'sm' ? 'w-[72px]'
-                :                 'w-[58px]'
+  const cardW   = hasPhoto
+                ? isFocus      ? 'w-[170px]'
+                  : size === 'md' ? 'w-[132px]'
+                  : size === 'sm' ? 'w-[96px]'
+                  :                 'w-[72px]'
+                : isFocus      ? 'w-[140px]'
+                  : size === 'md' ? 'w-[100px]'
+                  : size === 'sm' ? 'w-[72px]'
+                  :                 'w-[58px]'
 
   const cardPad = isFocus      ? 'px-5 py-4'
                 : size === 'md' ? 'px-3 py-3'
@@ -42,10 +48,15 @@ export function ExplorerNode({
 
   const cardGap = (size === 'sm' || size === 'xs') ? 'gap-1' : 'gap-2'
 
-  const avatarSz = isFocus      ? 'w-14 h-14 text-sm'
-                 : size === 'md' ? 'w-12 h-12 text-xs'
-                 : size === 'sm' ? 'w-8 h-8 text-[10px]'
-                 :                 'w-6 h-6 text-[9px]'
+  const avatarSz = hasPhoto
+                 ? isFocus      ? 'w-full h-28'
+                   : size === 'md' ? 'w-full h-20'
+                   : size === 'sm' ? 'w-full h-14'
+                   :                 'w-full h-10'
+                 : isFocus      ? 'w-14 h-14 text-sm'
+                   : size === 'md' ? 'w-12 h-12 text-xs'
+                   : size === 'sm' ? 'w-8 h-8 text-[10px]'
+                   :                 'w-6 h-6 text-[9px]'
 
   const nameText = isFocus      ? 'text-sm font-serif'
                  : size === 'xs' ? 'text-[9px]'
@@ -85,7 +96,7 @@ export function ExplorerNode({
         {/* Avatar */}
         <div className={cn(
           'flex items-center justify-center font-semibold transition-colors flex-shrink-0 overflow-hidden',
-          photoUrl ? 'rounded-full' : 'rounded-lg',
+          hasPhoto ? 'rounded-lg' : 'rounded-full',
           avatarSz,
           isFocus
             ? 'bg-amber-500/20 border border-amber-500/40 text-amber-700 dark:text-amber-300'
