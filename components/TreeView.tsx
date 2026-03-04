@@ -10,6 +10,8 @@ interface TreeViewProps {
   descendantDepth?: number
 }
 
+const FOCUS_TRUNK_SHIFT_PX = 75
+
 // ── Ornamental connector diamond ──────────────────────────────────────────────
 function ConnectorDiamond({ className }: { className?: string }) {
   return (
@@ -67,7 +69,7 @@ function DescendantBranch({
       <TreeNode person={person} role="child" badge={badge} />
       {canExpand && children.length > 0 && (
         <>
-          <div className="flex flex-col items-center mt-1">
+          <div className="flex flex-col items-center">
             <div className="w-px h-3 bg-zinc-300/70 dark:bg-zinc-700/60" />
             <ConnectorDiamond />
             <div className="w-px h-3 bg-zinc-300/70 dark:bg-zinc-700/60" />
@@ -158,7 +160,7 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
               <TreeNode key={p.id} person={p} role="parent" />
             ))}
           </div>
-          <div className="flex flex-col items-center mt-1">
+          <div className="flex flex-col items-center">
             <div className="w-px h-4 bg-zinc-300/70 dark:bg-zinc-700/60" />
             <ConnectorDiamond />
             <div className="w-px h-3 bg-zinc-300/70 dark:bg-zinc-700/60" />
@@ -206,7 +208,11 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
             const hasChildren = showDescendants && children.length > 0
 
             return (
-              <div key={i} className="flex flex-col items-center w-full gap-0">
+              <div
+                key={i}
+                className="flex flex-col items-center w-full gap-0"
+                style={i === 0 ? { transform: `translateX(${FOCUS_TRUNK_SHIFT_PX}px)` } : undefined}
+              >
                 {/* Divider between partner groups */}
                 {i > 0 && (
                   <div className="my-6 w-full max-w-xs flex items-center gap-3">
@@ -217,10 +223,7 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
                 )}
 
                 {/* Couple row: person (first group) + horizontal connector + partner */}
-                <div className={cn(
-                  'flex flex-nowrap items-center gap-2',
-                  i === 0 && 'translate-x-[75px]'
-                )}>
+                <div className="flex flex-nowrap items-center gap-2">
                   {i === 0 ? (
                     <TreeNode person={person} role="self" />
                   ) : (
@@ -244,19 +247,13 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
                 {/* Vertical connector + children */}
                 {hasChildren && (
                   <>
-                    <div className={cn(
-                      'flex flex-col items-center mt-1',
-                      i === 0 && 'translate-x-[75px]'
-                    )}>
+                    <div className="flex flex-col items-center">
                       <div className="w-px h-3 bg-zinc-300/70 dark:bg-zinc-700/60" />
                       <ConnectorDiamond />
                       <div className="w-px h-3 bg-zinc-300/70 dark:bg-zinc-700/60" />
                     </div>
 
-                    <div className={cn(
-                      'w-full overflow-x-auto',
-                      i === 0 && 'translate-x-[75px]'
-                    )}>
+                    <div className="w-full overflow-x-auto">
                       <div className="flex flex-nowrap items-start justify-center min-w-min">
                         {children.length === 1 ? (
                           <div className="flex flex-col items-center">
