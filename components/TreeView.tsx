@@ -97,7 +97,7 @@ function DescendantBranch({
                       'last:before:w-[50%]'
                     )}
                   >
-                    <div className="w-px h-3 mt-px bg-zinc-300/70 dark:bg-zinc-700/60" />
+                    <div className="w-px h-3 bg-zinc-300/70 dark:bg-zinc-700/60" />
                     <DescendantBranch
                       person={child}
                       childMap={childMap}
@@ -172,11 +172,13 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
       {showParents && hasParents && (
         <>
           {parents.length === 2 ? (
-            /* Two parents — horizontal connector with vertical continuity */
-            <div className="flex flex-nowrap items-center gap-2">
+            /* Two parents — lineage anchored to left parent */
+            <div
+              className="flex flex-nowrap items-center gap-2"
+              style={{ transform: `translateX(${FOCUS_TRUNK_SHIFT_PX}px)` }}
+            >
               <TreeNode person={parents[0].person} role="parent" badge={parents[0].is_adopted ? 'Adoptive' : undefined} />
-              <div className="relative flex items-center gap-0.5 self-stretch">
-                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-zinc-300/70 dark:bg-zinc-700/60" />
+              <div className="flex items-center gap-0.5">
                 <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
                 <ConnectorDiamond className="text-amber-500/40 flex-shrink-0" />
                 <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
@@ -230,7 +232,8 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
                     <ConnectorDiamond className="text-amber-500/30 flex-shrink-0" />
                   )}
 
-                  <div className="flex items-center gap-0.5">
+                  <div className="relative flex items-center gap-0.5 self-stretch">
+                    <div className="absolute left-1/2 -translate-x-1/2 top-1/2 bottom-0 w-px bg-zinc-300/70 dark:bg-zinc-700/60" />
                     <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
                     <ConnectorDiamond className="text-amber-500/40 flex-shrink-0" />
                     <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
@@ -279,7 +282,7 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
                                 'last:before:w-[50%]'
                               )}
                             >
-                              <div className="w-px h-3 mt-px bg-zinc-300/70 dark:bg-zinc-700/60" />
+                              <div className="w-px h-3 bg-zinc-300/70 dark:bg-zinc-700/60" />
                               <DescendantBranch
                                 person={child}
                                 childMap={childMap}
