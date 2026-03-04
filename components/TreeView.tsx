@@ -170,10 +170,11 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
       {showParents && hasParents && (
         <>
           {parents.length === 2 ? (
-            /* Two parents — horizontal couple connector only */
+            /* Two parents — horizontal connector with vertical continuity */
             <div className="flex flex-nowrap items-center gap-2">
               <TreeNode person={parents[0].person} role="parent" badge={parents[0].is_adopted ? 'Adoptive' : undefined} />
-              <div className="flex items-center gap-0.5">
+              <div className="relative flex items-center gap-0.5 self-stretch">
+                <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-zinc-300/70 dark:bg-zinc-700/60" />
                 <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
                 <ConnectorDiamond className="text-amber-500/40 flex-shrink-0" />
                 <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
@@ -216,7 +217,10 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
                 )}
 
                 {/* Couple row: person (first group) + horizontal connector + partner */}
-                <div className="flex flex-nowrap items-center gap-2">
+                <div className={cn(
+                  'flex flex-nowrap items-center gap-2',
+                  i === 0 && 'translate-x-[75px]'
+                )}>
                   {i === 0 ? (
                     <TreeNode person={person} role="self" />
                   ) : (
@@ -240,13 +244,19 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
                 {/* Vertical connector + children */}
                 {hasChildren && (
                   <>
-                    <div className="flex flex-col items-center mt-1">
+                    <div className={cn(
+                      'flex flex-col items-center mt-1',
+                      i === 0 && 'translate-x-[75px]'
+                    )}>
                       <div className="w-px h-3 bg-zinc-300/70 dark:bg-zinc-700/60" />
                       <ConnectorDiamond />
                       <div className="w-px h-3 bg-zinc-300/70 dark:bg-zinc-700/60" />
                     </div>
 
-                    <div className="w-full overflow-x-auto">
+                    <div className={cn(
+                      'w-full overflow-x-auto',
+                      i === 0 && 'translate-x-[75px]'
+                    )}>
                       <div className="flex flex-nowrap items-start justify-center min-w-min">
                         {children.length === 1 ? (
                           <div className="flex flex-col items-center">
