@@ -1,4 +1,4 @@
-import { TreeNode, UnknownNode } from './TreeNode'
+import { TreeNode } from './TreeNode'
 import { cn } from '@/lib/utils'
 import { type PersonProfile, type Person } from '@/lib/types'
 import { type SubgraphResult } from '@/lib/subgraph'
@@ -208,6 +208,7 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
           {partnerGroups.map((group, i) => {
             const { partner, children } = group
             const hasChildren = showDescendants && children.length > 0
+            const hasPartner = Boolean(partner)
 
             return (
               <div
@@ -224,26 +225,20 @@ export function TreeView({ profile, subgraph, ancestorDepth = 1, descendantDepth
                   </div>
                 )}
 
-                {/* Couple row: person (first group) + horizontal connector + partner */}
+                {/* Row anchor: show couple when partner exists, otherwise anchor directly under person */}
                 <div className="flex flex-nowrap items-center gap-2">
-                  {i === 0 ? (
-                    <TreeNode person={person} role="self" />
-                  ) : (
-                    <ConnectorDiamond className="text-amber-500/30 flex-shrink-0" />
-                  )}
+                  {i === 0 ? <TreeNode person={person} role="self" /> : <ConnectorDiamond className="text-amber-500/30 flex-shrink-0" />}
 
-                  <div className="relative flex items-center gap-0.5 self-stretch">
-                    <div className="absolute left-1/2 -translate-x-1/2 top-1/2 bottom-0 w-px bg-zinc-300/70 dark:bg-zinc-700/60" />
-                    <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
-                    <ConnectorDiamond className="text-amber-500/40 flex-shrink-0" />
-                    <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
-                  </div>
-
-                  {/* Partner */}
-                  {partner ? (
-                    <TreeNode person={partner} role="partner" />
-                  ) : (
-                    <UnknownNode label="Unknown parent" />
+                  {hasPartner && (
+                    <>
+                      <div className="relative flex items-center gap-0.5 self-stretch">
+                        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 bottom-0 w-px bg-zinc-300/70 dark:bg-zinc-700/60" />
+                        <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
+                        <ConnectorDiamond className="text-amber-500/40 flex-shrink-0" />
+                        <div className="w-3 h-px bg-zinc-300/70 dark:bg-zinc-700/60" />
+                      </div>
+                      {partner && <TreeNode person={partner} role="partner" />}
+                    </>
                   )}
                 </div>
 
