@@ -15,6 +15,7 @@ import {
   AddChildInline,
   EditRelationshipInline,
 } from './InlineEditors'
+import { ProfilePhotoQuickUpload } from './ProfilePhotoQuickUpload'
 
 interface ProfileViewProps {
   profile: PersonProfile
@@ -73,6 +74,9 @@ export function ProfileView({ profile, allPeople }: ProfileViewProps) {
                   </span>
                 </>
               )}
+            </div>
+            <div className="flex-shrink-0">
+              <ProfilePhotoQuickUpload personId={person.id} />
             </div>
 
             <div className="flex-1 min-w-0">

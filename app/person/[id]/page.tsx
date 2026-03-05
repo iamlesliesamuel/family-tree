@@ -15,8 +15,7 @@ import { NotesEditor } from '@/components/NotesEditor'
 import { DocumentList } from '@/components/DocumentList'
 import { TagManager } from '@/components/TagManager'
 import { getPersonInsights } from '@/lib/person-insights'
-import { MissingInfoCard } from '@/components/MissingInfoCard'
-import { ContributionPrompt } from '@/components/ContributionPrompt'
+import { ProfileAssistPanel } from '@/components/ProfileAssistPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -130,10 +129,6 @@ export default async function PersonPage({ params, searchParams }: PageProps) {
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
-        <div className="mb-4 space-y-4">
-          <MissingInfoCard personId={id} completeness={insights.completeness} missing={insights.missing} />
-          <ContributionPrompt personId={id} />
-        </div>
         {activeTab === 'tree' ? (
           <TreeView
             profile={profile}
@@ -142,7 +137,10 @@ export default async function PersonPage({ params, searchParams }: PageProps) {
             descendantDepth={descendantDepth}
           />
         ) : activeTab === 'profile' ? (
-          <ProfileView profile={profile} allPeople={allPeople} />
+          <div className="space-y-4">
+            <ProfileAssistPanel personId={id} completeness={insights.completeness} missing={insights.missing} />
+            <ProfileView profile={profile} allPeople={allPeople} />
+          </div>
         ) : activeTab === 'photos' ? (
           <PhotoGallery personId={id} />
         ) : activeTab === 'timeline' ? (

@@ -26,8 +26,9 @@ export async function GET(req: NextRequest) {
   }
 
   ;(edgesRes.data ?? []).forEach((row) => {
-    add(row.parent_id, row.child_id, 'parent')
-    add(row.child_id, row.parent_id, 'child')
+    // Label indicates what the next person is relative to the current one.
+    add(row.parent_id, row.child_id, 'child')
+    add(row.child_id, row.parent_id, 'parent')
   })
 
   const queue: string[] = [a]
