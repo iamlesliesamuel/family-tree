@@ -13,10 +13,12 @@ export interface PersonInsights {
 
 export async function getPersonInsights(profile: PersonProfile): Promise<PersonInsights> {
   const hasParents = profile.parents.length > 0
+  const hasProfilePhoto = Boolean(profile.person.profile_photo_path)
 
   const checks = [
     { ok: Boolean(profile.person.birth_date), missing: { key: 'birth_date', label: 'Birth date is missing', tab: 'profile' as const } },
     { ok: hasParents, missing: { key: 'parents', label: 'Parent name is missing', tab: 'profile' as const } },
+    { ok: hasProfilePhoto, missing: { key: 'profile_photo', label: 'Profile photo is missing', tab: 'profile' as const } },
   ]
 
   const present = checks.filter((c) => c.ok).length

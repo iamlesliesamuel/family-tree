@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { PartnerGroup, Person, PersonSummary } from '@/lib/types'
+import { ProfilePhotoQuickUpload } from './ProfilePhotoQuickUpload'
 
 type PersonForm = {
   first_name: string
@@ -175,9 +176,25 @@ export function DetailsEditorInline({ person }: { person: Person }) {
             }
           }}
         >
+          <div className="mb-2">
+            <ProfilePhotoQuickUpload personId={person.id} />
+          </div>
           <PersonFields form={form} setForm={setForm} flags={flags} />
           {error && <p className="text-xs text-red-600 dark:text-red-400 mt-2">{error}</p>}
-          <button type="submit" disabled={submitting} className="mt-2 px-3 py-1.5 rounded-md text-xs font-medium bg-amber-500 text-zinc-950 hover:bg-amber-400 disabled:opacity-60">Save</button>
+          <div className="mt-2 flex items-center gap-2">
+            <button type="submit" disabled={submitting} className="px-3 py-1.5 rounded-md text-xs font-medium bg-amber-500 text-zinc-950 hover:bg-amber-400 disabled:opacity-60">Save</button>
+            <button
+              type="button"
+              onClick={() => {
+                setForm(toForm(person))
+                setError(null)
+                setOpen(false)
+              }}
+              className="px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-300 dark:border-zinc-700"
+            >
+              Cancel
+            </button>
+          </div>
         </form>
       )}
     </div>

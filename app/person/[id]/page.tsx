@@ -138,7 +138,9 @@ export default async function PersonPage({ params, searchParams }: PageProps) {
           />
         ) : activeTab === 'profile' ? (
           <div className="space-y-4">
-            <ProfileAssistPanel personId={id} completeness={insights.completeness} missing={insights.missing} />
+            {insights.missing.length > 0 && (
+              <ProfileAssistPanel personId={id} completeness={insights.completeness} missing={insights.missing} />
+            )}
             <ProfileView profile={profile} allPeople={allPeople} />
           </div>
         ) : activeTab === 'photos' ? (
