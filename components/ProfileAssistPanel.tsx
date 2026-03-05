@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { MissingItem } from '@/lib/person-insights'
+import { ProfilePhotoQuickUpload } from './ProfilePhotoQuickUpload'
 
 interface ProfileAssistPanelProps {
   personId: string
@@ -34,6 +35,32 @@ export function ProfileAssistPanel({ personId, completeness, missing }: ProfileA
     router.push(`${pathname}?${next.toString()}`)
   }
 
+  const openProfileEdit = () => {
+    const next = new URLSearchParams(params.toString())
+    next.delete('tab')
+    next.set('edit', '1')
+    router.push(`${pathname}?${next.toString()}`)
+  }
+
+  const openAddParent = () => {
+    const next = new URLSearchParams(params.toString())
+    next.delete('tab')
+    next.set('addParent', '1')
+    router.push(`${pathname}?${next.toString()}#parents-section`)
+  }
+
+  const handleMissingAdd = (item: MissingItem) => {
+    if (item.key === 'birth_date') {
+      openProfileEdit()
+      return
+    }
+    if (item.key === 'parents') {
+      openAddParent()
+      return
+    }
+    goToTab(item.tab ?? 'profile')
+  }
+
   return (
     <section className="rounded-xl border border-zinc-200/70 dark:border-zinc-700/60 bg-white/80 dark:bg-zinc-900/70 p-4 space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -50,9 +77,17 @@ export function ProfileAssistPanel({ personId, completeness, missing }: ProfileA
           missing.map((item) => (
             <div key={item.key} className="flex items-center justify-between gap-2">
               <span>{item.label}</span>
-              <button type="button" onClick={() => goToTab(item.tab ?? 'profile')} className="text-xs px-2 py-1 rounded-md border border-zinc-300 dark:border-zinc-700">
-                Add
-              </button>
+              {item.key === 'profile_photo' ? (
+                <ProfilePhotoQuickUpload
+                  personId={personId}
+                  label="Add"
+                  buttonClassName="text-xs px-2 py-1 rounded-md border border-zinc-300 dark:border-zinc-700 disabled:opacity-50"
+                />
+              ) : (
+                <button type="button" onClick={() => handleMissingAdd(item)} className="text-xs px-2 py-1 rounded-md border border-zinc-300 dark:border-zinc-700">
+                  Add
+                </button>
+              )}
             </div>
           ))
         )}
@@ -68,8 +103,7 @@ export function ProfileAssistPanel({ personId, completeness, missing }: ProfileA
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => goToTab('photos')} className="px-3 py-1.5 rounded-md text-xs border border-zinc-300 dark:border-zinc-700">Upload Photo</button>
-        <button type="button" onClick={() => goToTab('profile')} className="px-3 py-1.5 rounded-md text-xs border border-zinc-300 dark:border-zinc-700">Suggest Correction</button>
+        <button type="button" onClick={openProfileEdit} className="px-3 py-1.5 rounded-md text-xs border border-zinc-300 dark:border-zinc-700">Suggest Correction</button>
       </div>
       <p className="text-[11px] text-zinc-500">Record: {personId.slice(0, 8)}...</p>
     </section>

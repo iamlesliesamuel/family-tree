@@ -1,9 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { PartnerGroup, Person, PersonSummary } from '@/lib/types'
 import { ProfilePhotoQuickUpload } from './ProfilePhotoQuickUpload'
+import { getPersonPhotoUrl } from '@/lib/storage-url'
 
 type PersonForm = {
   first_name: string
@@ -149,15 +150,43 @@ function PersonFields({
 
 export function DetailsEditorInline({ person }: { person: Person }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const flags = useMemo(() => getSchemaFlags(person), [person])
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState<PersonForm>(toForm(person))
+  const photoUrl = getPersonPhotoUrl(person.profile_photo_path)
+  const initials = `${person.first_name?.[0] ?? ''}${person.last_name?.[0] ?? ''}`.toUpperCase() || 'PH'
+
+  useEffect(() => {
+    if (searchParams.get('edit') === '1') {
+      setOpen(true)
+    }
+  }, [searchParams])
+
+  const clearEditParam = () => {
+    const next = new URLSearchParams(searchParams.toString())
+    next.delete('edit')
+    const query = next.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname)
+  }
 
   return (
     <div className="flex flex-col gap-2">
-      <EditorToggle label="Edit" open={open} onClick={() => { setError(null); setOpen((v) => !v) }} />
+      <EditorToggle
+        label="Edit"
+        open={open}
+        onClick={() => {
+          setError(null)
+          setOpen((v) => {
+            const next = !v
+            if (!next) clearEditParam()
+            return next
+          })
+        }}
+      />
       {open && (
         <form
           className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 bg-zinc-50/80 dark:bg-zinc-900/50"
@@ -168,6 +197,7 @@ export function DetailsEditorInline({ person }: { person: Person }) {
             try {
               await apiJson(`/api/people/${person.id}`, { method: 'PATCH', body: JSON.stringify(form) })
               setOpen(false)
+              clearEditParam()
               router.refresh()
             } catch (err) {
               setError(err instanceof Error ? err.message : 'Could not update details')
@@ -177,7 +207,12 @@ export function DetailsEditorInline({ person }: { person: Person }) {
           }}
         >
           <div className="mb-2">
-            <ProfilePhotoQuickUpload personId={person.id} />
+            <ProfilePhotoQuickUpload
+              personId={person.id}
+              variant="tile"
+              photoUrl={photoUrl}
+              initials={initials}
+            />
           </div>
           <PersonFields form={form} setForm={setForm} flags={flags} />
           {error && <p className="text-xs text-red-600 dark:text-red-400 mt-2">{error}</p>}
@@ -189,6 +224,7 @@ export function DetailsEditorInline({ person }: { person: Person }) {
                 setForm(toForm(person))
                 setError(null)
                 setOpen(false)
+                clearEditParam()
               }}
               className="px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-300 dark:border-zinc-700"
             >
@@ -203,6 +239,8 @@ export function DetailsEditorInline({ person }: { person: Person }) {
 
 export function AddParentInline({ person, allPeople }: { person: Person; allPeople: PersonSummary[] }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const flags = useMemo(() => getSchemaFlags(person), [person])
   const options = allPeople.filter((p) => p.id !== person.id)
   const [open, setOpen] = useState(false)
@@ -212,9 +250,33 @@ export function AddParentInline({ person, allPeople }: { person: Person; allPeop
   const [form, setForm] = useState<PersonForm>(emptyForm(person.last_name))
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (searchParams.get('addParent') === '1') {
+      setOpen(true)
+    }
+  }, [searchParams])
+
+  const clearAddParentParam = () => {
+    const next = new URLSearchParams(searchParams.toString())
+    next.delete('addParent')
+    const query = next.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname)
+  }
+
   return (
     <div className="flex flex-col gap-2">
-      <EditorToggle label="Add Parent" open={open} onClick={() => { setError(null); setOpen((v) => !v) }} />
+      <EditorToggle
+        label="Add Parent"
+        open={open}
+        onClick={() => {
+          setError(null)
+          setOpen((v) => {
+            const next = !v
+            if (!next) clearAddParentParam()
+            return next
+          })
+        }}
+      />
       {open && (
         <form
           className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 bg-zinc-50/80 dark:bg-zinc-900/50 flex flex-col gap-2"
@@ -230,6 +292,7 @@ export function AddParentInline({ person, allPeople }: { person: Person; allPeop
                 body: JSON.stringify({ parent_id: parentId, child_id: person.id, is_adopted: isAdopted }),
               })
               setOpen(false)
+              clearAddParentParam()
               router.refresh()
             } catch (err) {
               setError(err instanceof Error ? err.message : 'Could not add parent')

@@ -137,7 +137,7 @@ export function ProfileView({ profile, allPeople }: ProfileViewProps) {
       </div>
 
       {/* ── Parents ──────────────────────────────────────────────────────── */}
-      <Section title="Parents" actions={<AddParentInline person={person} allPeople={allPeople} />}>
+      <Section id="parents-section" title="Parents" actions={<AddParentInline person={person} allPeople={allPeople} />}>
         {hasParents ? (
           <div className="flex flex-col gap-2">
             {parents.map(({ person: parent, is_adopted }) => (
@@ -194,16 +194,18 @@ export function ProfileView({ profile, allPeople }: ProfileViewProps) {
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
 function Section({
+  id,
   title,
   children,
   actions,
 }: {
+  id?: string
   title: string
   children: React.ReactNode
   actions?: React.ReactNode
 }) {
   return (
-    <div>
+    <div id={id}>
       <div className="flex items-center gap-3 mb-3">
         <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-700/40" />
         <div className="flex items-center gap-2 flex-shrink-0">
