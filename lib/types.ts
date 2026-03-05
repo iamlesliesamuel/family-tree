@@ -22,6 +22,7 @@ export interface Relationship {
   start_date: string | null
   end_date: string | null
   notes: string | null
+  archived_at?: string | null
 }
 
 export interface ParentChild {
@@ -29,6 +30,7 @@ export interface ParentChild {
   parent_id: string
   child_id: string
   is_adopted: boolean
+  archived_at?: string | null
 }
 
 export interface ChildEntry {

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { logAudit } from '@/lib/audit'
+import { getEditedBy } from '@/lib/request-meta'
 
 export const runtime = 'nodejs'
 
@@ -7,6 +9,7 @@ type ParentChildPayload = {
   parent_id?: unknown
   child_id?: unknown
   is_adopted?: unknown
+  edited_by?: unknown
 }
 
 function asRequiredId(value: unknown, field: string): string {
@@ -36,6 +39,7 @@ export async function POST(req: NextRequest) {
       .select('*')
       .eq('parent_id', parentId)
       .eq('child_id', childId)
+      .is('archived_at', null)
       .limit(1)
 
     if ((existing.data ?? []).length > 0) {
@@ -48,6 +52,7 @@ export async function POST(req: NextRequest) {
         parent_id: parentId,
         child_id: childId,
         is_adopted: isAdopted,
+        archived_at: null,
       })
       .select('*')
       .single()
@@ -55,6 +60,14 @@ export async function POST(req: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
+
+    await logAudit({
+      entity_type: 'parent_child',
+      entity_id: data.id,
+      person_id: childId,
+      action: 'create',
+      edited_by: getEditedBy(req, payload.edited_by),
+    })
 
     return NextResponse.json({ relation: data }, { status: 201 })
   } catch (error) {

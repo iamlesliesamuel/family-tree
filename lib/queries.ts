@@ -11,12 +11,14 @@ import type {
 
 // ─── People ───────────────────────────────────────────────────────────────────
 
-export async function getAllPeople(): Promise<Person[]> {
-  const { data, error } = await supabase
+export async function getAllPeople(showArchived = false): Promise<Person[]> {
+  let query = supabase
     .from('people')
     .select('*')
     .order('last_name', { ascending: true })
     .order('first_name', { ascending: true })
+  if (!showArchived) query = query.is('archived_at', null)
+  const { data, error } = await query
 
   if (error) throw new Error(`getAllPeople: ${error.message}`)
   return attachProfilePhotos((data ?? []) as Person[])
@@ -24,11 +26,13 @@ export async function getAllPeople(): Promise<Person[]> {
 
 // Compact summary list — used for explorer search (ships only what search needs)
 export async function getAllPeopleSummary(): Promise<PersonSummary[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from('people')
     .select('id, first_name, last_name, maiden_name, birth_date')
     .order('last_name', { ascending: true })
     .order('first_name', { ascending: true })
+    .is('archived_at', null)
+  const { data, error } = await query
 
   if (error) throw new Error(`getAllPeopleSummary: ${error.message}`)
   return (data ?? []) as PersonSummary[]
@@ -39,6 +43,7 @@ export async function getFirstPerson(): Promise<Person | null> {
   const { data } = await supabase
     .from('people')
     .select('*')
+    .is('archived_at', null)
     .order('last_name', { ascending: true })
     .order('first_name', { ascending: true })
     .limit(1)
@@ -59,6 +64,7 @@ export async function getDefaultRootPerson(): Promise<Person | null> {
     .from('people')
     .select('*')
     .eq('id', rootId as string)
+    .is('archived_at', null)
     .single()
 
   if (!person) return null
@@ -73,6 +79,7 @@ export async function searchPeople(query: string): Promise<Person[]> {
     .or(
       `first_name.ilike.%${query}%,last_name.ilike.%${query}%,maiden_name.ilike.%${query}%`
     )
+    .is('archived_at', null)
     .order('last_name')
     .limit(50)
 
@@ -89,16 +96,25 @@ export async function searchPeople(query: string): Promise<Person[]> {
 //
 // No N+1 queries regardless of family size.
 
-export async function getPersonProfile(id: string): Promise<PersonProfile | null> {
+export async function getPersonProfile(id: string, showArchived = false): Promise<PersonProfile | null> {
   // Step 1 — parallel core fetches
+  const personQ = supabase.from('people').select('*').eq('id', id)
+  const asChildQ = supabase.from('parent_child').select('*').eq('child_id', id)
+  const asParentQ = supabase.from('parent_child').select('*').eq('parent_id', id)
+  const relQ = supabase.from('relationships').select('*').or(`person1_id.eq.${id},person2_id.eq.${id}`)
+
+  if (!showArchived) {
+    personQ.is('archived_at', null)
+    asChildQ.is('archived_at', null)
+    asParentQ.is('archived_at', null)
+    relQ.is('archived_at', null)
+  }
+
   const [personRes, asChildRes, asParentRes, relsRes] = await Promise.all([
-    supabase.from('people').select('*').eq('id', id).single(),
-    supabase.from('parent_child').select('*').eq('child_id', id),
-    supabase.from('parent_child').select('*').eq('parent_id', id),
-    supabase
-      .from('relationships')
-      .select('*')
-      .or(`person1_id.eq.${id},person2_id.eq.${id}`),
+    personQ.single(),
+    asChildQ,
+    asParentQ,
+    relQ,
   ])
 
   if (personRes.error || !personRes.data) return null
@@ -130,6 +146,7 @@ export async function getPersonProfile(id: string): Promise<PersonProfile | null
           .select('child_id, parent_id')
           .in('child_id', childIds)
           .neq('parent_id', id)
+          .is('archived_at', null)
       : { data: [] }
 
   const otherParentLinks = (otherParentLinksRes.data ?? []) as Array<{
@@ -150,7 +167,7 @@ export async function getPersonProfile(id: string): Promise<PersonProfile | null
 
   const peopleRes =
     allIds.length > 0
-      ? await supabase.from('people').select('*').in('id', allIds)
+      ? await supabase.from('people').select('*').in('id', allIds).is('archived_at', null)
       : { data: [] }
 
   const peopleMap = new Map<string, Person>(

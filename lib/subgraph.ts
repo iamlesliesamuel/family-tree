@@ -46,20 +46,33 @@ interface PCRow {
 export async function fetchSubgraph(
   focusId: string,
   ancestorDepth: number,
-  descendantDepth: number
+  descendantDepth: number,
+  showArchived = false
 ): Promise<SubgraphResult | null> {
   const ancDepth = Math.min(Math.max(ancestorDepth, 0), 5)
   const descDepth = Math.min(Math.max(descendantDepth, 0), 5)
 
   // ── Round 1: focus + immediate family ──────────────────────────────────────
+  const personQ = supabase.from('people').select('*').eq('id', focusId)
+  const asChildQ = supabase.from('parent_child').select('parent_id, child_id').eq('child_id', focusId)
+  const asParentQ = supabase.from('parent_child').select('parent_id, child_id').eq('parent_id', focusId)
+  const relQ = supabase
+    .from('relationships')
+    .select('*')
+    .or(`person1_id.eq.${focusId},person2_id.eq.${focusId}`)
+
+  if (!showArchived) {
+    personQ.is('archived_at', null)
+    asChildQ.is('archived_at', null)
+    asParentQ.is('archived_at', null)
+    relQ.is('archived_at', null)
+  }
+
   const [personRes, asChildRes, asParentRes, relsRes] = await Promise.all([
-    supabase.from('people').select('*').eq('id', focusId).single(),
-    supabase.from('parent_child').select('parent_id, child_id').eq('child_id', focusId),
-    supabase.from('parent_child').select('parent_id, child_id').eq('parent_id', focusId),
-    supabase
-      .from('relationships')
-      .select('*')
-      .or(`person1_id.eq.${focusId},person2_id.eq.${focusId}`),
+    personQ.single(),
+    asChildQ,
+    asParentQ,
+    relQ,
   ])
 
   if (personRes.error || !personRes.data) return null
@@ -116,22 +129,26 @@ export async function fetchSubgraph(
 
     const currentAnc = anc[d - 1] ?? []
     if (d < ancDepth && currentAnc.length > 0) {
+      let q = supabase
+        .from('parent_child')
+        .select('parent_id, child_id')
+        .in('child_id', currentAnc)
+      if (!showArchived) q = q.is('archived_at', null)
       queries.push(
-        supabase
-          .from('parent_child')
-          .select('parent_id, child_id')
-          .in('child_id', currentAnc) as unknown as Promise<{ data: PCRow[] }>
+        q as unknown as Promise<{ data: PCRow[] }>
       )
       kinds.push('anc')
     }
 
     const currentDesc = desc[d - 1] ?? []
     if (d < descDepth && currentDesc.length > 0) {
+      let q = supabase
+        .from('parent_child')
+        .select('parent_id, child_id')
+        .in('parent_id', currentDesc)
+      if (!showArchived) q = q.is('archived_at', null)
       queries.push(
-        supabase
-          .from('parent_child')
-          .select('parent_id, child_id')
-          .in('parent_id', currentDesc) as unknown as Promise<{ data: PCRow[] }>
+        q as unknown as Promise<{ data: PCRow[] }>
       )
       kinds.push('desc')
     }
@@ -159,7 +176,7 @@ export async function fetchSubgraph(
 
   const peopleRes =
     allIds.length > 0
-      ? await supabase.from('people').select('*').in('id', allIds)
+      ? await supabase.from('people').select('*').in('id', allIds).is('archived_at', null)
       : { data: [] }
 
   const peopleMap = new Map<string, Person>(

@@ -137,6 +137,13 @@ export function TreeExplorer({
             {/* Nav buttons + theme toggle */}
             {activeTab === 'tree' && (
               <div className="flex items-center gap-1 flex-shrink-0">
+                <Link href="/updates" className="px-2 py-1 text-xs rounded-md border border-zinc-300/70 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100">
+                  Updates
+                </Link>
+                <Link href="/relationship-finder" className="px-2 py-1 text-xs rounded-md border border-zinc-300/70 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100">
+                  Finder
+                </Link>
+                <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-700 mx-0.5" />
                 <NavBtn onClick={goBack} disabled={!canGoBack} title="Back">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -159,7 +166,13 @@ export function TreeExplorer({
 
             {/* Theme toggle in directory tab (no nav buttons there) */}
             {activeTab === 'directory' && (
-              <div className="ml-auto flex-shrink-0">
+              <div className="ml-auto flex-shrink-0 flex items-center gap-2">
+                <Link href="/updates" className="px-2 py-1 text-xs rounded-md border border-zinc-300/70 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100">
+                  Updates
+                </Link>
+                <Link href="/relationship-finder" className="px-2 py-1 text-xs rounded-md border border-zinc-300/70 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100">
+                  Finder
+                </Link>
                 <ThemeToggle />
               </div>
             )}

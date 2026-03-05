@@ -24,6 +24,7 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const [editingCaptionId, setEditingCaptionId] = useState<string | null>(null)
   const [captionDraft, setCaptionDraft] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
 
   const photoItems = useMemo(
     () => photos.map((p) => ({ ...p, url: supabaseBrowser.storage.from('person-photos').getPublicUrl(p.storage_path).data.publicUrl })),
@@ -32,7 +33,7 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
 
   async function loadPhotos() {
     setLoading(true)
-    const res = await fetch(`/api/person/${personId}/photos`, { cache: 'no-store' })
+    const res = await fetch(`/api/person/${personId}/photos${showArchived ? '?includeArchived=1' : ''}`, { cache: 'no-store' })
     const json = await readJsonSafe(res)
     if (!res.ok) {
       setError((typeof json.error === 'string' && json.error) || `Failed to load photos (${res.status})`)
@@ -46,7 +47,7 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
   useEffect(() => {
     void loadPhotos()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [personId])
+  }, [personId, showArchived])
 
   async function handleUpload(file: File) {
     setUploading(true)
@@ -127,10 +128,24 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
     const res = await fetch(`/api/person/${personId}/photos/${photoId}`, { method: 'DELETE' })
     const json = await readJsonSafe(res)
     if (!res.ok) {
-      setError((typeof json.error === 'string' && json.error) || `Failed to delete photo (${res.status})`)
+      setError((typeof json.error === 'string' && json.error) || `Failed to archive photo (${res.status})`)
       return
     }
     setPhotos((prev) => prev.filter((p) => p.id !== photoId))
+  }
+
+  async function restorePhoto(photoId: string) {
+    const res = await fetch(`/api/person/${personId}/photos/${photoId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restore: true }),
+    })
+    const json = await readJsonSafe(res)
+    if (!res.ok) {
+      setError((typeof json.error === 'string' && json.error) || `Failed to restore photo (${res.status})`)
+      return
+    }
+    await loadPhotos()
   }
 
   function startEditCaption(photo: PersonPhoto) {
@@ -149,20 +164,25 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
     <section className="rounded-xl border border-zinc-200/70 bg-white/70 dark:bg-zinc-900/50 dark:border-zinc-700/50 p-4">
       <div className="flex items-center justify-between gap-3 mb-4">
         <h2 className="font-serif text-lg text-zinc-800 dark:text-zinc-100">Photos</h2>
-        <label className="px-3 py-1.5 text-xs rounded-md border cursor-pointer border-zinc-300 dark:border-zinc-700">
-          {uploading ? 'Uploading...' : 'Upload Photo'}
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            disabled={uploading}
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) void handleUpload(file)
-              e.currentTarget.value = ''
-            }}
-          />
-        </label>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setShowArchived((v) => !v)} className="px-3 py-1.5 text-xs rounded-md border border-zinc-300 dark:border-zinc-700">
+            {showArchived ? 'Hide Archived' : 'Show Archived'}
+          </button>
+          <label className="px-3 py-1.5 text-xs rounded-md border cursor-pointer border-zinc-300 dark:border-zinc-700">
+            {uploading ? 'Uploading...' : 'Upload Photo'}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={uploading}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) void handleUpload(file)
+                e.currentTarget.value = ''
+              }}
+            />
+          </label>
+        </div>
       </div>
 
       {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
@@ -180,7 +200,11 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
               </button>
               <div className="p-2 flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-2">
-                  {photo.is_profile ? (
+                  {photo.archived_at ? (
+                    <span className="text-[11px] px-2 py-0.5 rounded-md border border-zinc-300/60 bg-zinc-100/70 text-zinc-600 dark:text-zinc-300">
+                      Archived
+                    </span>
+                  ) : photo.is_profile ? (
                     <span className="text-[11px] px-2 py-0.5 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300">
                       Profile photo
                     </span>
@@ -194,7 +218,7 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
                     </button>
                   )}
                 </div>
-                {photo.is_profile && (
+                {photo.is_profile && !photo.archived_at && (
                   <div className="space-y-2 rounded-md border border-zinc-200 dark:border-zinc-700 p-2">
                     <p className="text-[11px] font-medium text-zinc-600 dark:text-zinc-300">Photo framing</p>
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -258,10 +282,10 @@ export function PhotoGallery({ personId }: PhotoGalleryProps) {
                 )}
                 <button
                   type="button"
-                  onClick={() => void deletePhoto(photo.id)}
+                  onClick={() => void (photo.archived_at ? restorePhoto(photo.id) : deletePhoto(photo.id))}
                   className="text-xs text-red-600 dark:text-red-400 self-start"
                 >
-                  Delete
+                  {photo.archived_at ? 'Restore' : 'Archive'}
                 </button>
               </div>
             </div>

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { logAudit } from '@/lib/audit'
+import { getEditedBy } from '@/lib/request-meta'
 
 export const runtime = 'nodejs'
 
@@ -10,6 +12,7 @@ type RelationshipPayload = {
   start_date?: unknown
   end_date?: unknown
   notes?: unknown
+  edited_by?: unknown
 }
 
 function asRequiredId(value: unknown, field: string): string {
@@ -54,6 +57,7 @@ export async function POST(req: NextRequest) {
       .select('*')
       .eq('person1_id', person1Id)
       .eq('person2_id', person2Id)
+      .is('archived_at', null)
       .limit(1)
 
     const secondCheck = await supabase
@@ -61,6 +65,7 @@ export async function POST(req: NextRequest) {
       .select('*')
       .eq('person1_id', person2Id)
       .eq('person2_id', person1Id)
+      .is('archived_at', null)
       .limit(1)
 
     const existing = firstCheck.data?.[0] ?? secondCheck.data?.[0] ?? null
@@ -77,6 +82,7 @@ export async function POST(req: NextRequest) {
         start_date: asNullableDate(payload.start_date),
         end_date: asNullableDate(payload.end_date),
         notes: asNullableString(payload.notes),
+        archived_at: null,
       })
       .select('*')
       .single()
@@ -84,6 +90,14 @@ export async function POST(req: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
+
+    await logAudit({
+      entity_type: 'relationships',
+      entity_id: data.id,
+      person_id: person1Id,
+      action: 'create',
+      edited_by: getEditedBy(req, payload.edited_by),
+    })
 
     return NextResponse.json({ relationship: data }, { status: 201 })
   } catch (error) {

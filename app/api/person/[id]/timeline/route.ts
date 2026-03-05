@@ -22,10 +22,10 @@ export async function GET(_req: NextRequest, context: RouteContext) {
   const { id } = await context.params
 
   const [personRes, relRes, childLinkRes, docsRes] = await Promise.all([
-    supabase.from('people').select('*').eq('id', id).single(),
-    supabase.from('relationships').select('*').or(`person1_id.eq.${id},person2_id.eq.${id}`),
-    supabase.from('parent_child').select('child_id').eq('parent_id', id),
-    supabase.from('person_documents').select('*').eq('person_id', id),
+    supabase.from('people').select('*').eq('id', id).is('archived_at', null).single(),
+    supabase.from('relationships').select('*').or(`person1_id.eq.${id},person2_id.eq.${id}`).is('archived_at', null),
+    supabase.from('parent_child').select('child_id').eq('parent_id', id).is('archived_at', null),
+    supabase.from('person_documents').select('*').eq('person_id', id).is('archived_at', null),
   ])
 
   if (personRes.error || !personRes.data) {
@@ -37,12 +37,12 @@ export async function GET(_req: NextRequest, context: RouteContext) {
   const childIds = (childLinkRes.data ?? []).map((r) => r.child_id)
 
   const childPeople = childIds.length > 0
-    ? (await supabase.from('people').select('id, first_name, last_name, birth_date').in('id', childIds)).data ?? []
+    ? (await supabase.from('people').select('id, first_name, last_name, birth_date').in('id', childIds).is('archived_at', null)).data ?? []
     : []
 
   const partnerIds = rels.map((r) => (r.person1_id === id ? r.person2_id : r.person1_id))
   const partnerPeople = partnerIds.length > 0
-    ? (await supabase.from('people').select('id, first_name, last_name').in('id', partnerIds)).data ?? []
+    ? (await supabase.from('people').select('id, first_name, last_name').in('id', partnerIds).is('archived_at', null)).data ?? []
     : []
   const partnerMap = new Map(partnerPeople.map((p) => [p.id, p]))
 

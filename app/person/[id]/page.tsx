@@ -14,13 +14,16 @@ import { TimelineView } from '@/components/TimelineView'
 import { NotesEditor } from '@/components/NotesEditor'
 import { DocumentList } from '@/components/DocumentList'
 import { TagManager } from '@/components/TagManager'
+import { getPersonInsights } from '@/lib/person-insights'
+import { MissingInfoCard } from '@/components/MissingInfoCard'
+import { ContributionPrompt } from '@/components/ContributionPrompt'
 
 export const dynamic = 'force-dynamic'
 
 // Next.js 15: params and searchParams are Promises
 interface PageProps {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ view?: string; tab?: string; ancestorDepth?: string; descendantDepth?: string }>
+  searchParams: Promise<{ view?: string; tab?: string; ancestorDepth?: string; descendantDepth?: string; showArchived?: string }>
 }
 
 function parseDepth(value: string | undefined, fallback = 2) {
@@ -44,7 +47,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PersonPage({ params, searchParams }: PageProps) {
   const { id } = await params
-  const { view, tab, ancestorDepth: ancestorDepthParam, descendantDepth: descendantDepthParam } = await searchParams
+  const { view, tab, ancestorDepth: ancestorDepthParam, descendantDepth: descendantDepthParam, showArchived } = await searchParams
+  const includeArchived = showArchived === '1'
 
   const ancestorDepth = parseDepth(ancestorDepthParam, 2)
   const descendantDepth = parseDepth(descendantDepthParam, 2)
@@ -56,11 +60,12 @@ export default async function PersonPage({ params, searchParams }: PageProps) {
   const needsProfile = activeTab === 'profile'
 
   const [profile, allPeople, subgraph] = await Promise.all([
-    getPersonProfile(id),
+    getPersonProfile(id, includeArchived),
     needsProfile ? getAllPeopleSummary() : Promise.resolve([]),
-    isTree ? fetchSubgraph(id, ancestorDepth, descendantDepth) : Promise.resolve(null),
+    isTree ? fetchSubgraph(id, ancestorDepth, descendantDepth, includeArchived) : Promise.resolve(null),
   ])
   if (!profile) notFound()
+  const insights = await getPersonInsights(profile)
 
   return (
     <main className="flex flex-col flex-1 min-h-screen">
@@ -113,10 +118,22 @@ export default async function PersonPage({ params, searchParams }: PageProps) {
             />
           </div>
         )}
+        <div className="max-w-2xl mx-auto px-4 pb-3">
+          <Link
+            href={includeArchived ? `/person/${id}` : `/person/${id}?showArchived=1`}
+            className="text-xs px-2 py-1 rounded-md border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300"
+          >
+            {includeArchived ? 'Hide archived items' : 'Show archived items'}
+          </Link>
+        </div>
       </header>
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
+        <div className="mb-4 space-y-4">
+          <MissingInfoCard personId={id} completeness={insights.completeness} missing={insights.missing} />
+          <ContributionPrompt personId={id} />
+        </div>
         {activeTab === 'tree' ? (
           <TreeView
             profile={profile}

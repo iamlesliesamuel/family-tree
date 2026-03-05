@@ -399,6 +399,7 @@ export function EditRelationshipInline({ partnerGroups }: { partnerGroups: Partn
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [notes, setNotes] = useState('')
+  const [archived, setArchived] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   if (rows.length === 0) return null
@@ -416,7 +417,7 @@ export function EditRelationshipInline({ partnerGroups }: { partnerGroups: Partn
               if (!selectedId) throw new Error('Select a relationship first')
               await apiJson(`/api/relationships/${selectedId}`, {
                 method: 'PATCH',
-                body: JSON.stringify({ relationship_type: type, start_date: startDate, end_date: endDate, notes }),
+                body: JSON.stringify({ relationship_type: type, start_date: startDate, end_date: endDate, notes, archived }),
               })
               setOpen(false)
               router.refresh()
@@ -436,6 +437,7 @@ export function EditRelationshipInline({ partnerGroups }: { partnerGroups: Partn
               setStartDate(row.relationship.start_date ?? '')
               setEndDate(row.relationship.end_date ?? '')
               setNotes(row.relationship.notes ?? '')
+              setArchived(Boolean((row.relationship as unknown as { archived_at?: string | null }).archived_at))
             }}
             className="rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm"
           >
@@ -452,8 +454,35 @@ export function EditRelationshipInline({ partnerGroups }: { partnerGroups: Partn
             <label className="text-xs text-zinc-500">End date<input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="mt-1 w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm" /></label>
           </div>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes" className="rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm min-h-14" />
+          <label className="text-xs flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
+            <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} />
+            Archived
+          </label>
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
-          <button type="submit" className="self-start px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-300 dark:border-zinc-700">Save relationship</button>
+          <div className="flex items-center gap-2">
+            <button type="submit" className="self-start px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-300 dark:border-zinc-700">Save relationship</button>
+            {selectedId && (
+              <button
+                type="button"
+                onClick={async () => {
+                  setError(null)
+                  try {
+                    await apiJson(`/api/relationships/${selectedId}`, {
+                      method: 'DELETE',
+                      body: JSON.stringify({ restore: archived }),
+                    })
+                    setOpen(false)
+                    router.refresh()
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Could not change archive status')
+                  }
+                }}
+                className="self-start px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-300 dark:border-zinc-700"
+              >
+                {archived ? 'Restore relationship' : 'Archive relationship'}
+              </button>
+            )}
+          </div>
         </form>
       )}
     </div>

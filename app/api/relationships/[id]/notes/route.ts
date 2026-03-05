@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { logAudit, logFieldDiffs } from '@/lib/audit'
+import { getEditedBy } from '@/lib/request-meta'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -24,7 +26,14 @@ export async function GET(_req: NextRequest, context: RouteContext) {
 
 export async function PUT(req: NextRequest, context: RouteContext) {
   const { id } = await context.params
-  const body = (await req.json()) as { content?: string }
+  const body = (await req.json()) as { content?: string; edited_by?: string }
+  const editedBy = getEditedBy(req, body.edited_by)
+
+  const beforeRes = await supabase
+    .from('relationship_notes')
+    .select('*')
+    .eq('relationship_id', id)
+    .single()
 
   const { data, error } = await supabase
     .from('relationship_notes')
@@ -33,5 +42,24 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+  if (beforeRes.error && beforeRes.error.code === 'PGRST116') {
+    await logAudit({
+      entity_type: 'relationship_notes',
+      entity_id: data.id,
+      person_id: null,
+      action: 'create',
+      edited_by: editedBy,
+    })
+  } else if (beforeRes.data) {
+    await logFieldDiffs({
+      entityType: 'relationship_notes',
+      entityId: data.id,
+      before: beforeRes.data as Record<string, unknown>,
+      after: data as Record<string, unknown>,
+      editedBy,
+      fields: ['content'],
+    })
+  }
   return NextResponse.json({ note: data })
 }

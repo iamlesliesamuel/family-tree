@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { logAudit } from '@/lib/audit'
+import { getEditedBy } from '@/lib/request-meta'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -10,19 +12,24 @@ export const runtime = 'nodejs'
 
 export async function GET(_req: NextRequest, context: RouteContext) {
   const { id } = await context.params
+  const includeArchived = _req.nextUrl.searchParams.get('includeArchived') === '1'
 
-  let { data, error } = await supabase
+  let query = supabase
     .from('person_photos')
-    .select('id, person_id, storage_path, caption, is_profile, focus_x, focus_y, uploaded_at')
+    .select('id, person_id, storage_path, caption, is_profile, focus_x, focus_y, archived_at, uploaded_at')
     .eq('person_id', id)
     .order('uploaded_at', { ascending: false })
+  if (!includeArchived) query = query.is('archived_at', null)
+  let { data, error } = await query
 
   if (error && (error.message.toLowerCase().includes('focus_x') || error.message.toLowerCase().includes('focus_y'))) {
-    const fallback = await supabase
+    let fallbackQuery = supabase
       .from('person_photos')
-      .select('id, person_id, storage_path, caption, is_profile, uploaded_at')
+      .select('id, person_id, storage_path, caption, is_profile, archived_at, uploaded_at')
       .eq('person_id', id)
       .order('uploaded_at', { ascending: false })
+    if (!includeArchived) fallbackQuery = fallbackQuery.is('archived_at', null)
+    const fallback = await fallbackQuery
 
     data = (fallback.data ?? []).map((row) => ({ ...row, focus_x: 50, focus_y: 50 }))
     error = fallback.error
@@ -37,6 +44,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     const { id } = await context.params
     const contentType = req.headers.get('content-type') ?? ''
     const admin = getSupabaseAdmin()
+    const editedBy = getEditedBy(req)
 
     if (contentType.includes('multipart/form-data')) {
       const form = await req.formData()
@@ -79,6 +87,14 @@ export async function POST(req: NextRequest, context: RouteContext) {
         return NextResponse.json({ error: insert.error.message }, { status: 400 })
       }
 
+      await logAudit({
+        entity_type: 'person_photos',
+        entity_id: insert.data.id,
+        person_id: id,
+        action: 'upload',
+        edited_by: editedBy,
+      })
+
       return NextResponse.json({ photo: insert.data }, { status: 201 })
     }
 
@@ -101,6 +117,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    await logAudit({
+      entity_type: 'person_photos',
+      entity_id: data.id,
+      person_id: id,
+      action: 'upload',
+      edited_by: editedBy,
+    })
     return NextResponse.json({ photo: data }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to upload photo'

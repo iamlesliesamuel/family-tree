@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Cormorant_Garamond } from 'next/font/google'
 import './globals.css'
+import { ContributorProvider } from '@/components/ContributorProvider'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -83,6 +84,7 @@ export default function RootLayout({
       >
         {/* Safe-area padding for notched devices */}
         <div className="min-h-screen flex flex-col pb-safe">
+          <ContributorProvider />
           {children}
         </div>
 

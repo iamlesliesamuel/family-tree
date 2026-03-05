@@ -24,10 +24,11 @@ export function DocumentList({ personId }: DocumentListProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
 
   async function loadDocuments() {
     setLoading(true)
-    const res = await fetch(`/api/person/${personId}/documents`, { cache: 'no-store' })
+    const res = await fetch(`/api/person/${personId}/documents${showArchived ? '?includeArchived=1' : ''}`, { cache: 'no-store' })
     const json = await readJsonSafe(res)
     if (!res.ok) setError((typeof json.error === 'string' && json.error) || `Failed to load documents (${res.status})`)
     else {
@@ -40,7 +41,7 @@ export function DocumentList({ personId }: DocumentListProps) {
   useEffect(() => {
     void loadDocuments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [personId])
+  }, [personId, showArchived])
 
   async function uploadDocument(file: File, title: string, documentType: DocType) {
     setUploading(true)
@@ -69,10 +70,24 @@ export function DocumentList({ personId }: DocumentListProps) {
     const res = await fetch(`/api/person/${personId}/documents/${documentId}`, { method: 'DELETE' })
     const json = await readJsonSafe(res)
     if (!res.ok) {
-      setError((typeof json.error === 'string' && json.error) || `Failed to delete document (${res.status})`)
+      setError((typeof json.error === 'string' && json.error) || `Failed to archive document (${res.status})`)
       return
     }
     setDocs((prev) => prev.filter((d) => d.id !== documentId))
+  }
+
+  async function restoreDocument(documentId: string) {
+    const res = await fetch(`/api/person/${personId}/documents/${documentId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restore: true }),
+    })
+    const json = await readJsonSafe(res)
+    if (!res.ok) {
+      setError((typeof json.error === 'string' && json.error) || `Failed to restore document (${res.status})`)
+      return
+    }
+    await loadDocuments()
   }
 
   async function downloadDocument(documentId: string) {
@@ -90,6 +105,9 @@ export function DocumentList({ personId }: DocumentListProps) {
     <section className="rounded-xl border border-zinc-200/70 bg-white/70 dark:bg-zinc-900/50 dark:border-zinc-700/50 p-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-serif text-lg text-zinc-800 dark:text-zinc-100">Documents</h2>
+        <button type="button" onClick={() => setShowArchived((v) => !v)} className="px-3 py-1.5 text-xs rounded-md border border-zinc-300 dark:border-zinc-700">
+          {showArchived ? 'Hide Archived' : 'Show Archived'}
+        </button>
       </div>
 
       <DocumentUploadForm uploading={uploading} onSubmit={uploadDocument} />
@@ -105,11 +123,16 @@ export function DocumentList({ personId }: DocumentListProps) {
             <div key={doc.id} className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 flex items-center justify-between gap-3 bg-zinc-50/70 dark:bg-zinc-900/70">
               <div>
                 <p className="text-sm font-medium text-zinc-800 dark:text-zinc-100">{doc.title}</p>
-                <p className="text-xs text-zinc-500">{doc.document_type} · {new Date(doc.uploaded_at).toLocaleDateString()}</p>
+                <p className="text-xs text-zinc-500">
+                  {doc.document_type} · {new Date(doc.uploaded_at).toLocaleDateString()}
+                  {doc.archived_at ? ' · archived' : ''}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => void downloadDocument(doc.id)} className="text-xs px-2 py-1 rounded border border-zinc-300 dark:border-zinc-700">Download</button>
-                <button type="button" onClick={() => void deleteDocument(doc.id)} className="text-xs px-2 py-1 rounded text-red-600 dark:text-red-400">Delete</button>
+                <button type="button" onClick={() => void (doc.archived_at ? restoreDocument(doc.id) : deleteDocument(doc.id))} className="text-xs px-2 py-1 rounded text-red-600 dark:text-red-400">
+                  {doc.archived_at ? 'Restore' : 'Archive'}
+                </button>
               </div>
             </div>
           ))}

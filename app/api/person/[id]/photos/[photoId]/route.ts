@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { logAudit, logFieldDiffs } from '@/lib/audit'
+import { getEditedBy } from '@/lib/request-meta'
 
 interface RouteContext {
   params: Promise<{ id: string; photoId: string }>
@@ -17,6 +19,17 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     focus_y?: number
   }
   const admin = getSupabaseAdmin()
+  const editedBy = getEditedBy(req)
+
+  const beforeRes = await admin
+    .from('person_photos')
+    .select('*')
+    .eq('id', photoId)
+    .eq('person_id', id)
+    .single()
+  if (beforeRes.error || !beforeRes.data) {
+    return NextResponse.json({ error: beforeRes.error?.message ?? 'Photo not found' }, { status: 404 })
+  }
 
   if (typeof body.is_profile === 'boolean' && body.is_profile) {
     const clear = await admin
@@ -47,12 +60,37 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+  await logFieldDiffs({
+    entityType: 'person_photos',
+    entityId: photoId,
+    personId: id,
+    before: beforeRes.data as Record<string, unknown>,
+    after: data as Record<string, unknown>,
+    editedBy,
+  })
+
+  if (typeof body.is_profile === 'boolean' && body.is_profile) {
+    await logAudit({
+      entity_type: 'person_photos',
+      entity_id: photoId,
+      person_id: id,
+      action: 'update',
+      field_name: 'is_profile',
+      old_value: 'false',
+      new_value: 'true',
+      edited_by: editedBy,
+    })
+  }
   return NextResponse.json({ photo: data })
 }
 
 export async function DELETE(_req: NextRequest, context: RouteContext) {
   const { id, photoId } = await context.params
   const admin = getSupabaseAdmin()
+  const editedBy = getEditedBy(_req)
+  const body = await _req.json().catch(() => ({})) as { restore?: boolean }
+  const restore = body.restore === true
 
   const { data: photo, error: fetchError } = await admin
     .from('person_photos')
@@ -65,10 +103,23 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: fetchError?.message ?? 'Photo not found' }, { status: 404 })
   }
 
-  const dbDelete = await admin.from('person_photos').delete().eq('id', photoId).eq('person_id', id)
-  if (dbDelete.error) return NextResponse.json({ error: dbDelete.error.message }, { status: 400 })
+  const { data, error } = await admin
+    .from('person_photos')
+    .update({ archived_at: restore ? null : new Date().toISOString() })
+    .eq('id', photoId)
+    .eq('person_id', id)
+    .select('*')
+    .single()
 
-  await admin.storage.from('person-photos').remove([photo.storage_path])
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
-  return NextResponse.json({ ok: true })
+  await logAudit({
+    entity_type: 'person_photos',
+    entity_id: photoId,
+    person_id: id,
+    action: restore ? 'restore' : 'archive',
+    edited_by: editedBy,
+  })
+
+  return NextResponse.json({ photo: data, ok: true })
 }

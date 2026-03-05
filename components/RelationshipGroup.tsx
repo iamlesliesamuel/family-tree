@@ -54,6 +54,13 @@ export function RelationshipGroup({ group, index }: RelationshipGroupProps) {
                     {formatRelationshipType(relationship.relationship_type)}
                   </span>
                 )}
+                {Boolean((relationship as unknown as { archived_at?: string | null })?.archived_at) && (
+                  <span className="text-xs px-1.5 py-0.5 rounded-md
+                    bg-zinc-200/70 text-zinc-600 border border-zinc-300/70 font-medium
+                    dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700">
+                    Archived
+                  </span>
+                )}
               </div>
 
               {/* Years / relationship dates */}

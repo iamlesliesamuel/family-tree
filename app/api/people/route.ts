@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { logAudit } from '@/lib/audit'
+import { getEditedBy } from '@/lib/request-meta'
 
 export const runtime = 'nodejs'
 
@@ -13,6 +15,7 @@ type PersonPayload = {
   birth_place?: unknown
   gender?: unknown
   notes?: unknown
+  edited_by?: unknown
 }
 
 function extractMissingColumn(message: string): string | null {
@@ -69,6 +72,13 @@ export async function POST(req: NextRequest) {
         .single()
 
       if (!error) {
+        await logAudit({
+          entity_type: 'people',
+          entity_id: data.id,
+          person_id: data.id,
+          action: 'create',
+          edited_by: getEditedBy(req, payload.edited_by),
+        })
         return NextResponse.json({ person: data }, { status: 201 })
       }
 

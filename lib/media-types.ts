@@ -6,6 +6,7 @@ export interface PersonPhoto {
   is_profile: boolean
   focus_x: number
   focus_y: number
+  archived_at?: string | null
   uploaded_at: string
 }
 
@@ -15,6 +16,7 @@ export interface PersonDocument {
   title: string
   storage_path: string
   document_type: 'funeral_program' | 'birth_certificate' | 'marriage_certificate' | 'obituary' | 'other'
+  archived_at?: string | null
   uploaded_at: string
 }
 
