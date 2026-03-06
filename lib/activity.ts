@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { formatActivityDescription } from './activity-format'
 
 export interface ActivityItem {
   id: string
@@ -10,6 +11,8 @@ export interface ActivityItem {
   created_at: string
   edited_by: string | null
   description: string
+  old_value: string | null
+  new_value: string | null
   person_name: string | null
   friendly_description: string
 }
@@ -30,6 +33,8 @@ export async function getRecentActivity(limit = 50): Promise<ActivityItem[]> {
     const personId = typeof r.person_id === 'string' ? r.person_id : null
     const personName = personId ? peopleMap.get(personId) ?? null : null
     const desc = typeof r.description === 'string' ? r.description : 'Updated record'
+    const oldValue = typeof r.old_value === 'string' ? r.old_value : null
+    const newValue = typeof r.new_value === 'string' ? r.new_value : null
     return {
       id: String(r.id),
       entity_type: String(r.entity_type ?? ''),
@@ -40,8 +45,10 @@ export async function getRecentActivity(limit = 50): Promise<ActivityItem[]> {
       created_at: String(r.created_at ?? ''),
       edited_by: typeof r.edited_by === 'string' ? r.edited_by : null,
       description: desc,
+      old_value: oldValue,
+      new_value: newValue,
       person_name: personName,
-      friendly_description: personName ? `${desc} for ${personName}` : desc,
+      friendly_description: formatActivityDescription({ ...r, old_value: oldValue, new_value: newValue }, personName),
     }
   })
 }

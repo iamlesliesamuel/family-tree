@@ -69,19 +69,6 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     after: data as Record<string, unknown>,
     editedBy,
   })
-
-  if (typeof body.is_profile === 'boolean' && body.is_profile) {
-    await logAudit({
-      entity_type: 'person_photos',
-      entity_id: photoId,
-      person_id: id,
-      action: 'update',
-      field_name: 'is_profile',
-      old_value: 'false',
-      new_value: 'true',
-      edited_by: editedBy,
-    })
-  }
   return NextResponse.json({ photo: data })
 }
 

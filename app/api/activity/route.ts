@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { formatActivityDescription } from '@/lib/activity-format'
 
 export const runtime = 'nodejs'
 
@@ -22,11 +23,14 @@ export async function GET(req: NextRequest) {
   const activity = rows.map((r) => {
     const personId = typeof r.person_id === 'string' ? r.person_id : null
     const name = personId ? peopleMap.get(personId) : null
-    const desc = typeof r.description === 'string' ? r.description : 'Updated record'
+    const oldValue = typeof r.old_value === 'string' ? r.old_value : null
+    const newValue = typeof r.new_value === 'string' ? r.new_value : null
     return {
       ...r,
       person_name: name,
-      friendly_description: name ? `${desc} for ${name}` : desc,
+      old_value: oldValue,
+      new_value: newValue,
+      friendly_description: formatActivityDescription({ ...r, old_value: oldValue, new_value: newValue }, name ?? null),
     }
   })
 
