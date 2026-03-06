@@ -2,6 +2,60 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
 type Edge = { to: string; label: 'parent' | 'child' }
+type StepLabel = 'parent' | 'child'
+
+function ancestorTitle(generations: number) {
+  if (generations <= 0) return 'self'
+  if (generations === 1) return 'parent'
+  if (generations === 2) return 'grandparent'
+  return `${'great-'.repeat(generations - 2)}grandparent`
+}
+
+function descendantTitle(generations: number) {
+  if (generations <= 0) return 'self'
+  if (generations === 1) return 'child'
+  if (generations === 2) return 'grandchild'
+  return `${'great-'.repeat(generations - 2)}grandchild`
+}
+
+function uncleAuntTitle(upCount: number) {
+  if (upCount <= 1) return 'relative'
+  if (upCount === 2) return 'aunt/uncle'
+  return `${'great-'.repeat(upCount - 2)}aunt/uncle`
+}
+
+function nieceNephewTitle(downCount: number) {
+  if (downCount <= 1) return 'relative'
+  if (downCount === 2) return 'niece/nephew'
+  return `${'great-'.repeat(downCount - 2)}niece/nephew`
+}
+
+function ordinal(n: number) {
+  if (n % 100 >= 11 && n % 100 <= 13) return `${n}th`
+  if (n % 10 === 1) return `${n}st`
+  if (n % 10 === 2) return `${n}nd`
+  if (n % 10 === 3) return `${n}rd`
+  return `${n}th`
+}
+
+function inferRelationship(stepLabels: StepLabel[]) {
+  const upCount = stepLabels.filter((s) => s === 'parent').length
+  const downCount = stepLabels.filter((s) => s === 'child').length
+
+  if (upCount === 0 && downCount === 0) return 'same person'
+  if (downCount === 0) return ancestorTitle(upCount)
+  if (upCount === 0) return descendantTitle(downCount)
+  if (upCount === 1 && downCount === 1) return 'sibling'
+  if (upCount > 1 && downCount === 1) return uncleAuntTitle(upCount)
+  if (upCount === 1 && downCount > 1) return nieceNephewTitle(downCount)
+
+  const degree = Math.min(upCount, downCount) - 1
+  const removed = Math.abs(upCount - downCount)
+  if (degree <= 0) return 'relative'
+  if (removed === 0) return `${ordinal(degree)} cousin`
+  if (removed === 1) return `${ordinal(degree)} cousin once removed`
+  return `${ordinal(degree)} cousin ${removed} times removed`
+}
 
 export const runtime = 'nodejs'
 
@@ -48,7 +102,7 @@ export async function GET(req: NextRequest) {
 
   if (!visited.has(b)) return NextResponse.json({ path: null, message: 'No path found' })
 
-  const path: Array<{ id: string; via: 'parent' | 'child' | null }> = []
+  const path: Array<{ id: string; via: StepLabel | null }> = []
   let cursor: string | null = b
   while (cursor) {
     if (cursor === a) {
@@ -63,13 +117,23 @@ export async function GET(req: NextRequest) {
   path.reverse()
 
   const nameMap = new Map((peopleRes.data ?? []).map((p) => [p.id, `${p.first_name} ${p.last_name}`]))
-  const readable = path
-    .map((step, i) => {
-      const name = nameMap.get(step.id) ?? step.id
-      if (i === 0) return name
-      return `${name} (${step.via})`
-    })
-    .join(' → ')
+  const stepLabels = path.slice(1).map((step) => step.via).filter((v): v is StepLabel => v !== null)
+  const relationship = inferRelationship(stepLabels)
 
-  return NextResponse.json({ path, readable })
+  // Use explicit directional arrows so "parent/child" cannot be misread.
+  const readable = path.reduce((acc, step, i) => {
+    const name = nameMap.get(step.id) ?? step.id
+    if (i === 0) return name
+    return `${acc} --${step.via}--> ${name}`
+  }, '')
+
+  const personAName = nameMap.get(a) ?? a
+  const personBName = nameMap.get(b) ?? b
+
+  return NextResponse.json({
+    path,
+    readable,
+    relationship,
+    summary: `${personBName} is ${relationship} to ${personAName}.`,
+  })
 }

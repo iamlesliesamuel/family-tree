@@ -12,6 +12,7 @@ export function RelationshipFinder({ people }: RelationshipFinderProps) {
   const [personB, setPersonB] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<string | null>(null)
+  const [summary, setSummary] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const sorted = useMemo(
@@ -34,13 +35,16 @@ export function RelationshipFinder({ people }: RelationshipFinderProps) {
     setLoading(true)
     setError(null)
     setResult(null)
+    setSummary(null)
     try {
       const res = await fetch(`/api/relationship-path?a=${encodeURIComponent(personA)}&b=${encodeURIComponent(personB)}`, { cache: 'no-store' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Could not calculate relationship')
       if (!json.path) {
+        setSummary(null)
         setResult('No relationship path found in current tree data.')
       } else {
+        setSummary(typeof json.summary === 'string' ? json.summary : null)
         setResult(json.readable ?? 'Path found.')
       }
     } catch (e) {
@@ -78,6 +82,7 @@ export function RelationshipFinder({ people }: RelationshipFinderProps) {
         </button>
       </div>
       {error && <p className="text-xs text-red-500">{error}</p>}
+      {summary && <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{summary}</p>}
       {result && <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{result}</p>}
     </div>
   )
