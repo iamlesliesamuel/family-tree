@@ -16,6 +16,7 @@ import {
   EditRelationshipInline,
 } from './InlineEditors'
 import { PersonArchiveAction } from './PersonArchiveAction'
+import { ParentChildArchiveAction } from './ParentChildArchiveAction'
 
 interface ProfileViewProps {
   profile: PersonProfile
@@ -152,15 +153,24 @@ export function ProfileView({ profile, allPeople }: ProfileViewProps) {
       <Section id="parents-section" title="Parents" actions={<AddParentInline person={person} allPeople={allPeople} />}>
         {hasParents ? (
           <div className="flex flex-col gap-2">
-            {parents.map(({ person: parent, is_adopted }) => (
-              <div key={parent.id} className="relative">
-                <PersonCard person={parent} variant="default" />
-                {is_adopted && (
-                  <span className="absolute top-2 right-10 text-xs px-1.5 py-0.5 rounded-md
-                    bg-amber-500/10 text-amber-600 dark:text-amber-500/80 border border-amber-500/20 font-medium">
-                    Adoptive
-                  </span>
-                )}
+            {parents.map((entry) => (
+              <div key={entry.link_id ?? entry.person.id} className="flex items-start gap-2">
+                <div className="relative flex-1">
+                  <PersonCard person={entry.person} variant="default" />
+                  {entry.is_adopted && (
+                    <span className="absolute top-2 right-10 text-xs px-1.5 py-0.5 rounded-md
+                      bg-amber-500/10 text-amber-600 dark:text-amber-500/80 border border-amber-500/20 font-medium">
+                      Adoptive
+                    </span>
+                  )}
+                </div>
+                <div className="pt-2">
+                  <ParentChildArchiveAction
+                    linkId={entry.link_id}
+                    archivedAt={entry.archived_at}
+                    label="Parent"
+                  />
+                </div>
               </div>
             ))}
           </div>

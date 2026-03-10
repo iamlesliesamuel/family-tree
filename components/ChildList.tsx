@@ -5,29 +5,30 @@ import { getDisplayName, getYearRange, type ChildEntry } from '@/lib/types'
 interface ChildListProps {
   children: ChildEntry[]
   className?: string
+  renderActions?: (entry: ChildEntry) => React.ReactNode
 }
 
-export function ChildList({ children, className }: ChildListProps) {
+export function ChildList({ children, className, renderActions }: ChildListProps) {
   if (children.length === 0) return null
 
   return (
     <ul className={cn('flex flex-col gap-1.5', className)}>
-      {children.map(({ child, is_adopted }) => {
+      {children.map((entry) => {
+        const { child, is_adopted } = entry
         const name = getDisplayName(child)
         const years = getYearRange(child)
         const initials = [child.first_name[0], child.last_name[0]].join('').toUpperCase()
 
         return (
-          <li key={child.id}>
+          <li key={entry.link_id ?? child.id} className="flex items-start gap-2">
             <Link
               href={`/person/${child.id}`}
-              className="group flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent
+              className="group flex flex-1 items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent
                 hover:border-zinc-200/80 hover:bg-zinc-100/80
                 dark:hover:border-zinc-700/60 dark:hover:bg-zinc-800/50
                 transition-all duration-150
                 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50"
             >
-              {/* Avatar */}
               <div className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-md
                 bg-zinc-100 border border-zinc-200 text-xs font-semibold text-zinc-500
                 dark:bg-zinc-800 dark:border-zinc-700
@@ -48,7 +49,6 @@ export function ChildList({ children, className }: ChildListProps) {
                 )}
               </div>
 
-              {/* Adopted badge */}
               {is_adopted && (
                 <span className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded-md
                   bg-amber-500/10 text-amber-500/80 border border-amber-500/20 font-medium">
@@ -67,6 +67,7 @@ export function ChildList({ children, className }: ChildListProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </Link>
+            {renderActions ? <div className="pt-2">{renderActions(entry)}</div> : null}
           </li>
         )
       })}

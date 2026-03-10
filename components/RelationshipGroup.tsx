@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ChildList } from './ChildList'
 import { RelationshipNotes } from './RelationshipNotes'
+import { ParentChildArchiveAction } from './ParentChildArchiveAction'
 import {
   getDisplayName,
   getYearRange,
@@ -92,7 +93,16 @@ export function RelationshipGroup({ group, index }: RelationshipGroupProps) {
           <p className="font-serif text-xs italic text-zinc-500 dark:text-zinc-600 tracking-wide mb-2 px-1">
             {children.length} {children.length === 1 ? 'child' : 'children'}
           </p>
-          <ChildList children={children} />
+          <ChildList
+            children={children}
+            renderActions={(entry) => (
+              <ParentChildArchiveAction
+                linkId={entry.link_id}
+                archivedAt={entry.archived_at}
+                label="Child"
+              />
+            )}
+          />
         </div>
       ) : (
         <div className="px-4 py-3">

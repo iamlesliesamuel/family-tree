@@ -38,11 +38,15 @@ export interface ParentChild {
 export interface ChildEntry {
   child: Person
   is_adopted: boolean
+  link_id?: string
+  archived_at?: string | null
 }
 
 export interface ParentEntry {
   person: Person
   is_adopted: boolean
+  link_id?: string
+  archived_at?: string | null
 }
 
 export interface PartnerGroup {

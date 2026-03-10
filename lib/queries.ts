@@ -120,12 +120,16 @@ export async function getPersonProfile(id: string, showArchived = false): Promis
   if (personRes.error || !personRes.data) return null
 
   const asChildRows = (asChildRes.data ?? []) as Array<{
+    id: string
     parent_id: string
     is_adopted: boolean
+    archived_at?: string | null
   }>
   const asParentRows = (asParentRes.data ?? []) as Array<{
+    id: string
     child_id: string
     is_adopted: boolean
+    archived_at?: string | null
   }>
   const relRows = (relsRes.data ?? []) as Array<{
     id: string
@@ -141,12 +145,15 @@ export async function getPersonProfile(id: string, showArchived = false): Promis
   const childIds = asParentRows.map((r) => r.child_id)
   const otherParentLinksRes =
     childIds.length > 0
-      ? await supabase
-          .from('parent_child')
-          .select('child_id, parent_id')
-          .in('child_id', childIds)
-          .neq('parent_id', id)
-          .is('archived_at', null)
+      ? await (async () => {
+          let query = supabase
+            .from('parent_child')
+            .select('child_id, parent_id')
+            .in('child_id', childIds)
+            .neq('parent_id', id)
+          if (!showArchived) query = query.is('archived_at', null)
+          return query
+        })()
       : { data: [] }
 
   const otherParentLinks = (otherParentLinksRes.data ?? []) as Array<{
@@ -167,7 +174,11 @@ export async function getPersonProfile(id: string, showArchived = false): Promis
 
   const peopleRes =
     allIds.length > 0
-      ? await supabase.from('people').select('*').in('id', allIds).is('archived_at', null)
+      ? await (async () => {
+          let query = supabase.from('people').select('*').in('id', allIds)
+          if (!showArchived) query = query.is('archived_at', null)
+          return query
+        })()
       : { data: [] }
 
   const peopleMap = new Map<string, Person>(
@@ -197,7 +208,12 @@ export async function getPersonProfile(id: string, showArchived = false): Promis
     .map((r) => {
       const p = peopleMap.get(r.parent_id)
       if (!p) return null
-      return { person: p, is_adopted: r.is_adopted }
+      return {
+        person: p,
+        is_adopted: r.is_adopted,
+        link_id: r.id,
+        archived_at: r.archived_at ?? null,
+      }
     })
     .filter(Boolean) as ParentEntry[]
 
@@ -209,6 +225,9 @@ export async function getPersonProfile(id: string, showArchived = false): Promis
 
   const childAdoptedMap = new Map<string, boolean>(
     asParentRows.map((r) => [r.child_id, r.is_adopted])
+  )
+  const childLinkMap = new Map<string, { id: string; archived_at?: string | null }>(
+    asParentRows.map((r) => [r.child_id, { id: r.id, archived_at: r.archived_at ?? null }])
   )
 
   // Group children by other parent
@@ -225,6 +244,8 @@ export async function getPersonProfile(id: string, showArchived = false): Promis
     childrenByOtherParent.get(key)!.push({
       child,
       is_adopted: childAdoptedMap.get(childId) ?? false,
+      link_id: childLinkMap.get(childId)?.id,
+      archived_at: childLinkMap.get(childId)?.archived_at ?? null,
     })
   })
 
