@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { getProfilePhotoPathMap } from './profile-photos'
-import type { Person, Relationship } from './types'
+import type { Person, Relationship, PartnerGroup, ChildEntry } from './types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +26,7 @@ export interface SubgraphResult {
   levels: SubgraphLevel[]
   links: SubgraphLink[]
   partners: SubgraphPartner[]
+  partnerGroups: PartnerGroup[]
 }
 
 // Row shape returned by parent_child queries
@@ -257,5 +258,48 @@ export async function fetchSubgraph(
     seenPartnerIds.add(partnerId)
   })
 
-  return { focus, levels, links: allLinks, partners }
+  const immediateChildren = ((desc[0] ?? [])
+    .map((childId) => peopleMap.get(childId))
+    .filter(Boolean) as Person[])
+
+  const childEntriesByPartner = new Map<string, ChildEntry[]>()
+  const otherParentsByChild = new Map<string, string[]>()
+
+  ;((coParentLinksRes.data ?? []) as PCRow[]).forEach((row) => {
+    const existing = otherParentsByChild.get(row.child_id) ?? []
+    existing.push(row.parent_id)
+    otherParentsByChild.set(row.child_id, existing)
+  })
+
+  immediateChildren.forEach((child) => {
+    const otherParentIds = Array.from(new Set(otherParentsByChild.get(child.id) ?? []))
+    if (otherParentIds.length === 0) {
+      const existing = childEntriesByPartner.get('unknown') ?? []
+      existing.push({ child, is_adopted: false })
+      childEntriesByPartner.set('unknown', existing)
+      return
+    }
+
+    otherParentIds.forEach((partnerId) => {
+      const existing = childEntriesByPartner.get(partnerId) ?? []
+      existing.push({ child, is_adopted: false })
+      childEntriesByPartner.set(partnerId, existing)
+    })
+  })
+
+  const partnerGroups: PartnerGroup[] = partners.map(({ partner, relationship }) => ({
+    partner,
+    relationship,
+    children: partner ? (childEntriesByPartner.get(partner.id) ?? []) : [],
+  }))
+
+  if (childEntriesByPartner.get('unknown')?.length) {
+    partnerGroups.push({
+      partner: null,
+      relationship: null,
+      children: childEntriesByPartner.get('unknown') ?? [],
+    })
+  }
+
+  return { focus, levels, links: allLinks, partners, partnerGroups }
 }

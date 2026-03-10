@@ -8,7 +8,7 @@ import { DepthControls } from './DepthControls'
 import { PeopleSearch } from './SearchBar'
 import { ThemeToggle } from './ThemeToggle'
 import { cn } from '@/lib/utils'
-import { getDisplayName, type PersonSummary, type Person } from '@/lib/types'
+import { getDisplayName, type PersonSummary, type Person, type PartnerGroup } from '@/lib/types'
 import type { SubgraphResult, SubgraphLevel } from '@/lib/subgraph'
 
 interface TreeExplorerProps {
@@ -313,7 +313,6 @@ interface TreeCanvasProps {
 
 function TreeCanvas({ data, ancestorLevels, descendantLevels, onFocus }: TreeCanvasProps) {
   const hasAncestors = ancestorLevels.length > 0
-  const hasPartners  = data.partners.length > 0
 
   const allDescendantPeople = new Map<string, Person>()
   descendantLevels.forEach(level => level.people.forEach(p => allDescendantPeople.set(p.id, p)))
@@ -336,8 +335,11 @@ function TreeCanvas({ data, ancestorLevels, descendantLevels, onFocus }: TreeCan
     })
   })
 
-  const focusChildren  = childMap.get(data.focus.id) ?? []
-  const hasDescendants = focusChildren.length > 0
+  const focusGroups = data.partnerGroups.length > 0
+    ? data.partnerGroups
+    : [{ partner: null, relationship: null, children: (childMap.get(data.focus.id) ?? []).map((child) => ({ child, is_adopted: false })) }]
+  const hasPartners  = focusGroups.some((group) => Boolean(group.partner))
+  const hasDescendants = focusGroups.some((group) => group.children.length > 0)
 
   return (
     <div className="flex flex-col items-center gap-0 w-full animate-fade-in">
@@ -351,71 +353,80 @@ function TreeCanvas({ data, ancestorLevels, descendantLevels, onFocus }: TreeCan
         </div>
       ))}
 
-      {/* ── Focus person + partners ───────────────────────────────────────── */}
-      {hasPartners && data.partners.length === 1 ? (
-        /*
-         * Single partner — grid layout pins the diamond to the exact horizontal
-         * center (1fr each side) regardless of focus (140px) vs partner (100px)
-         * card widths, so the vertical stem above/below connects perfectly.
-         */
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full py-3">
-          <div className="flex justify-end">
-            <ExplorerNode person={data.focus} role="focus" onFocus={onFocus} />
-          </div>
-          <div className="relative flex items-center gap-1.5 px-2 self-stretch">
-            <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-amber-500/20 dark:bg-amber-500/15" />
-            <div className="w-4 h-px bg-amber-500/25" />
-            <Diamond className="text-amber-500/30" size={8} />
-            <div className="w-4 h-px bg-amber-500/25" />
-          </div>
-          <div className="flex justify-start">
-            {data.partners[0].partner ? (
-              <ExplorerNode person={data.partners[0].partner} role="partner" onFocus={onFocus} />
-            ) : null}
-          </div>
-        </div>
-      ) : (
-        /* No partners, or multiple partners */
-        <div className="flex items-start justify-center gap-3 flex-wrap py-3">
-          <ExplorerNode person={data.focus} role="focus" onFocus={onFocus} />
-          {hasPartners && (
-            <>
-              <div className="flex items-center self-center h-10">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-4 h-px bg-amber-500/25" />
-                  <Diamond className="text-amber-500/30" size={8} />
-                  <div className="w-4 h-px bg-amber-500/25" />
-                </div>
-              </div>
-              <div className="flex flex-wrap justify-center gap-2">
-                {data.partners.map(({ partner }) =>
-                  partner ? (
-                    <ExplorerNode key={partner.id} person={partner} role="partner" onFocus={onFocus} />
-                  ) : null
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      )}
+      {/* ── Focus person + grouped co-parents ───────────────────────────── */}
+      <div className="flex flex-col items-center w-full">
+        {focusGroups.map((group, index) => (
+          <FocusPartnerGroup
+            key={`${group.partner?.id ?? 'unknown'}-${index}`}
+            group={group}
+            focus={data.focus}
+            childMap={childMap}
+            onFocus={onFocus}
+            showFocus={index === 0}
+          />
+        ))}
+      </div>
 
-      {/* ── Descendants ─────────────────────────────────────────────────── */}
-      {hasDescendants && (
+      {/* Empty state */}
+      {!hasAncestors && !hasDescendants && !hasPartners && (
+        <p className="mt-8 text-sm text-zinc-400 dark:text-zinc-600 italic text-center">
+          No family connections recorded for this person.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function FocusPartnerGroup({
+  group,
+  focus,
+  childMap,
+  onFocus,
+  showFocus,
+}: {
+  group: PartnerGroup
+  focus: Person
+  childMap: Map<string, Person[]>
+  onFocus: (id: string) => void
+  showFocus: boolean
+}) {
+  const hasPartner = Boolean(group.partner)
+  const children = group.children
+
+  return (
+    <div className="flex flex-col items-center w-full">
+      <div className="flex items-start justify-center gap-3 flex-wrap py-3">
+        {showFocus ? <ExplorerNode person={focus} role="focus" onFocus={onFocus} /> : <Diamond className="text-amber-500/20 self-center mt-8" size={8} />}
+        {hasPartner && (
+          <>
+            <div className="flex items-center self-center h-10">
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-px bg-amber-500/25" />
+                <Diamond className="text-amber-500/30" size={8} />
+                <div className="w-4 h-px bg-amber-500/25" />
+              </div>
+            </div>
+            <ExplorerNode person={group.partner!} role="partner" onFocus={onFocus} />
+          </>
+        )}
+      </div>
+
+      {children.length > 0 && (
         <>
           <Connector />
           <div className="w-full overflow-x-auto">
-            <div className="flex flex-nowrap items-start justify-center px-4 pb-10 min-w-min mx-auto">
-              {focusChildren.length === 1 ? (
+            <div className="flex flex-nowrap items-start justify-center px-4 pb-8 min-w-min mx-auto">
+              {children.length === 1 ? (
                 <DescendantBranch
-                  person={focusChildren[0]}
+                  person={children[0].child}
                   childMap={childMap}
                   onFocus={onFocus}
                   depth={1}
                 />
               ) : (
-                focusChildren.map(child => (
+                children.map(({ child }) => (
                   <div
-                    key={child.id}
+                    key={`${group.partner?.id ?? 'unknown'}-${child.id}`}
                     className={cn(
                       'relative flex flex-col items-center flex-shrink-0 px-3',
                       "before:content-[''] before:absolute before:top-0 before:h-px",
@@ -438,13 +449,6 @@ function TreeCanvas({ data, ancestorLevels, descendantLevels, onFocus }: TreeCan
             </div>
           </div>
         </>
-      )}
-
-      {/* Empty state */}
-      {!hasAncestors && !hasDescendants && !hasPartners && (
-        <p className="mt-8 text-sm text-zinc-400 dark:text-zinc-600 italic text-center">
-          No family connections recorded for this person.
-        </p>
       )}
     </div>
   )
