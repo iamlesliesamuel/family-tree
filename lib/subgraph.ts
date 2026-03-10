@@ -118,6 +118,23 @@ export async function fetchSubgraph(
     r.person1_id === focusId ? r.person2_id : r.person1_id
   )
 
+  const coParentLinksRes =
+    descDepth > 0
+      ? await (async () => {
+          let query = supabase
+            .from('parent_child')
+            .select('child_id, parent_id')
+            .in('child_id', desc[0] ?? [])
+            .neq('parent_id', focusId)
+          if (!showArchived) query = query.is('archived_at', null)
+          return query
+        })()
+      : { data: [] }
+
+  const coParentPartnerIds = Array.from(
+    new Set(((coParentLinksRes.data ?? []) as PCRow[]).map((row) => row.parent_id))
+  )
+
   // ── Iterative deeper levels ─────────────────────────────────────────────────
   // Loop index d represents "we already have level d, fetch level d+1"
   // We need depth-1 iterations (e.g. for depth=2, fetch once to add level 2)
@@ -172,7 +189,7 @@ export async function fetchSubgraph(
   }
 
   // ── Hydrate all people in one query ────────────────────────────────────────
-  const allIds = Array.from(new Set([...anc.flat(), ...desc.flat(), ...partnerIds]))
+  const allIds = Array.from(new Set([...anc.flat(), ...desc.flat(), ...partnerIds, ...coParentPartnerIds]))
 
   const peopleRes =
     allIds.length > 0
@@ -227,6 +244,18 @@ export async function fetchSubgraph(
       null,
     relationship: rel,
   }))
+
+  const seenPartnerIds = new Set(
+    partners.map((entry) => entry.partner?.id).filter((value): value is string => Boolean(value))
+  )
+
+  coParentPartnerIds.forEach((partnerId) => {
+    if (seenPartnerIds.has(partnerId)) return
+    const partner = peopleMap.get(partnerId) ?? null
+    if (!partner) return
+    partners.push({ partner, relationship: null })
+    seenPartnerIds.add(partnerId)
+  })
 
   return { focus, levels, links: allLinks, partners }
 }
