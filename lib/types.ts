@@ -9,6 +9,8 @@ export interface Person {
   birth_place: string | null
   gender: string | null
   notes: string | null
+  archived_at?: string | null
+  archived_reason?: string | null
   profile_photo_path?: string | null
   profile_photo_focus_x?: number | null
   profile_photo_focus_y?: number | null

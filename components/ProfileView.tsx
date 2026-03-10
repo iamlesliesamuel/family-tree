@@ -15,6 +15,7 @@ import {
   AddChildInline,
   EditRelationshipInline,
 } from './InlineEditors'
+import { PersonArchiveAction } from './PersonArchiveAction'
 
 interface ProfileViewProps {
   profile: PersonProfile
@@ -30,6 +31,7 @@ export function ProfileView({ profile, allPeople }: ProfileViewProps) {
   const initials    = [person.first_name[0], person.last_name[0]].join('').toUpperCase()
   const photoUrl    = getPersonPhotoUrl(person.profile_photo_path)
   const objectPosition = `${person.profile_photo_focus_x ?? 50}% ${person.profile_photo_focus_y ?? 50}%`
+  const isArchived = Boolean(person.archived_at)
 
   const lifespan =
     birthYear && deathYear ? `${birthYear} – ${deathYear}` :
@@ -91,10 +93,20 @@ export function ProfileView({ profile, allPeople }: ProfileViewProps) {
                       {lifespan}
                     </p>
                   )}
+                  {isArchived && (
+                    <p className="mt-2 inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+                      Archived and hidden from the tree by default
+                    </p>
+                  )}
                 </div>
 
-                <div className="mt-1">
+                <div className="mt-1 flex flex-col items-end gap-2">
                   <DetailsEditorInline person={person} />
+                  <PersonArchiveAction
+                    personId={person.id}
+                    displayName={getDisplayName(person)}
+                    archivedAt={person.archived_at}
+                  />
                 </div>
               </div>
             </div>
