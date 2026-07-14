@@ -280,20 +280,28 @@ function nodeWidthPx(p: Person, size: NodeSize, isFocus: boolean): number {
   return size === 'md' ? 100 : size === 'sm' ? 72 : 58
 }
 
-// Width of an invisible left spacer placed before the children descent. It equals
-// the blood-centre→spouse-centre distance; because the descent sits in a column
-// centred on the blood person, a left pad of this size moves the descent's centre
-// to exactly half that distance — i.e. the couple's midpoint.
-function coupleDescentPad(blood: Person, spouse: Person, size: NodeSize, isFocus: boolean): number {
-  return nodeWidthPx(blood, size, isFocus) / 2 + LINK_W + nodeWidthPx(spouse, size, false) / 2
+// Width of an invisible left spacer placed before the children descent. The
+// descent sits in a column centred on the blood person, so a left pad of this
+// size moves the descent's centre right by half of it — landing it exactly on
+// the marriage diamond (blood_centre + bloodW/2 + LINK_W/2), which is where the
+// descent line joins the horizontal line between the couple.
+function coupleDescentPad(blood: Person, size: NodeSize, isFocus: boolean): number {
+  return nodeWidthPx(blood, size, isFocus) + LINK_W
 }
 
-function MarriageLink() {
+// The horizontal tie between two spouses. `descend` continues a vertical stem
+// down from the marriage diamond to the bottom of the cards, so the line to the
+// couple's children joins the marriage line instead of floating beneath it.
+function MarriageLink({ descend = false }: { descend?: boolean }) {
   return (
-    <div className="flex items-center self-center" style={{ width: LINK_W }}>
-      <div className="h-px flex-1 bg-amber-500/25" />
-      <Diamond className="text-amber-500/40 mx-0.5 flex-shrink-0" size={7} />
-      <div className="h-px flex-1 bg-amber-500/25" />
+    <div className="flex flex-col items-center self-stretch flex-shrink-0" style={{ width: LINK_W }}>
+      <div className="flex-1" />
+      <div className="flex items-center w-full">
+        <div className="h-px flex-1 bg-amber-500/25" />
+        <Diamond className="text-amber-500/40 mx-0.5 flex-shrink-0" size={7} />
+        <div className="h-px flex-1 bg-amber-500/25" />
+      </div>
+      <div className={cn('flex-1 w-px', descend && 'bg-zinc-300/70 dark:bg-zinc-700/50')} />
     </div>
   )
 }
@@ -427,11 +435,15 @@ function FamilyUnit({ id, ctx, depth }: {
   // it's clear the children belong to both — exactly like MyHeritage.
   if (unions.length === 1) {
     const u = unions[0]
-    const pad = u.spouse ? coupleDescentPad(person, u.spouse, size, isFocus) : 0
+    const hasKids = u.childIds.length > 0
+    const pad = u.spouse ? coupleDescentPad(person, size, isFocus) : 0
     return (
       <div className="flex flex-col items-center flex-shrink-0">
-        <CoupleRow primary={card} spouse={u.spouse} spouseSize={size} onFocus={ctx.onFocus} />
-        {u.childIds.length > 0 && (
+        <CoupleRow
+          primary={card} spouse={u.spouse} spouseSize={size}
+          onFocus={ctx.onFocus} descend={hasKids}
+        />
+        {hasKids && (
           <ChildrenDescent
             childIds={u.childIds} size={size} childSize={childSize}
             renderChild={renderChild} padLeft={pad}
@@ -498,11 +510,12 @@ function ChildrenDescent({ childIds, size, childSize, renderChild, padLeft = 0 }
 // blood person — never on the spouse. The spouse hangs off to the side via the
 // marriage link. This tells a viewer "Leslie is the child; Marguerite married
 // in", not "they're siblings".
-function CoupleRow({ primary, spouse, spouseSize, onFocus }: {
+function CoupleRow({ primary, spouse, spouseSize, onFocus, descend = false }: {
   primary: React.ReactNode
   spouse: Person | null
   spouseSize: NodeSize
   onFocus: (id: string) => void
+  descend?: boolean
 }) {
   if (!spouse) return <>{primary}</>
 
@@ -516,7 +529,7 @@ function CoupleRow({ primary, spouse, spouseSize, onFocus }: {
         {spouseCard}
       </div>
       {primary}
-      <MarriageLink />
+      <MarriageLink descend={descend} />
       {spouseCard}
     </div>
   )
