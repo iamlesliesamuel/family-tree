@@ -431,6 +431,13 @@ function FamilyUnit({ id, ctx, depth }: {
   )
 }
 
+// A blood person shown beside their married-in spouse. Crucially, the blood
+// person stays horizontally *centered* (an invisible mirror of the spouse side
+// reserves equal width on the left), so the connector coming down from the
+// parents lands on the blood person — and the line down to their children
+// leaves from the blood person — never from the spouse. The spouse hangs off to
+// the side via the marriage link, exactly like MyHeritage. This is what tells
+// a viewer "Leslie is the child; Marguerite married in", not "they're siblings".
 function CoupleRow({ primary, spouse, spouseSize, onFocus }: {
   primary: React.ReactNode
   spouse: Person | null
@@ -438,15 +445,26 @@ function CoupleRow({ primary, spouse, spouseSize, onFocus }: {
   onFocus: (id: string) => void
 }) {
   if (!spouse) return <>{primary}</>
+
+  const marriageLink = (
+    <div className="flex items-center self-center mx-1.5">
+      <div className="w-3 h-px bg-amber-500/25" />
+      <Diamond className="text-amber-500/40 mx-1" size={7} />
+      <div className="w-3 h-px bg-amber-500/25" />
+    </div>
+  )
+  const spouseCard = <ExplorerNode person={spouse} role="partner" onFocus={onFocus} size={spouseSize} />
+
   return (
     <div className="flex items-start justify-center">
-      {primary}
-      <div className="flex items-center self-center mx-1.5">
-        <div className="w-3 h-px bg-amber-500/25" />
-        <Diamond className="text-amber-500/40 mx-1" size={7} />
-        <div className="w-3 h-px bg-amber-500/25" />
+      {/* Invisible mirror of the spouse side → keeps `primary` centered. */}
+      <div className="flex items-start invisible" aria-hidden="true">
+        {marriageLink}
+        {spouseCard}
       </div>
-      <ExplorerNode person={spouse} role="partner" onFocus={onFocus} size={spouseSize} />
+      {primary}
+      {marriageLink}
+      {spouseCard}
     </div>
   )
 }
