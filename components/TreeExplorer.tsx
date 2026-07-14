@@ -10,6 +10,7 @@ import { PeopleSearch } from './SearchBar'
 import { ThemeToggle } from './ThemeToggle'
 import { cn } from '@/lib/utils'
 import { getDisplayName, type PersonSummary, type Person } from '@/lib/types'
+import { getPersonPhotoUrl } from '@/lib/storage-url'
 import type { SubgraphResult, SubgraphLevel } from '@/lib/subgraph'
 
 interface TreeExplorerProps {
@@ -266,6 +267,37 @@ function sizeForDepth(depth: number): NodeSize {
   return depth <= 1 ? 'md' : depth === 2 ? 'sm' : 'xs'
 }
 
+// Fixed width of the marriage link between two spouse cards (see MarriageLink).
+const LINK_W = 48
+
+// Rendered card width in px — must stay in sync with ExplorerNode's `cardW`. Used
+// to compute where a couple's midpoint falls so the line to their children can
+// descend from exactly between them.
+function nodeWidthPx(p: Person, size: NodeSize, isFocus: boolean): number {
+  const hasPhoto = Boolean(getPersonPhotoUrl(p.profile_photo_path))
+  if (isFocus) return hasPhoto ? 170 : 140
+  if (hasPhoto) return size === 'md' ? 132 : size === 'sm' ? 96 : 72
+  return size === 'md' ? 100 : size === 'sm' ? 72 : 58
+}
+
+// Width of an invisible left spacer placed before the children descent. It equals
+// the blood-centre→spouse-centre distance; because the descent sits in a column
+// centred on the blood person, a left pad of this size moves the descent's centre
+// to exactly half that distance — i.e. the couple's midpoint.
+function coupleDescentPad(blood: Person, spouse: Person, size: NodeSize, isFocus: boolean): number {
+  return nodeWidthPx(blood, size, isFocus) / 2 + LINK_W + nodeWidthPx(spouse, size, false) / 2
+}
+
+function MarriageLink() {
+  return (
+    <div className="flex items-center self-center" style={{ width: LINK_W }}>
+      <div className="h-px flex-1 bg-amber-500/25" />
+      <Diamond className="text-amber-500/40 mx-0.5 flex-shrink-0" size={7} />
+      <div className="h-px flex-1 bg-amber-500/25" />
+    </div>
+  )
+}
+
 function buildTreeContext(data: SubgraphResult, onFocus: (id: string) => void): TreeContext {
   const byId = new Map<string, Person>(data.allNodes.map((p) => [p.id, p]))
 
@@ -389,23 +421,31 @@ function FamilyUnit({ id, ctx, depth }: {
     return <div className="flex flex-col items-center flex-shrink-0">{card}</div>
   }
 
-  // One union → couple side by side, children combed beneath the pair.
+  // One union → couple side by side; children descend from the couple's MIDPOINT.
+  // The blood person stays centered under the connector coming down from their
+  // parents; the line down to their own children leaves from between the pair, so
+  // it's clear the children belong to both — exactly like MyHeritage.
   if (unions.length === 1) {
     const u = unions[0]
+    const pad = u.spouse ? coupleDescentPad(person, u.spouse, size, isFocus) : 0
     return (
       <div className="flex flex-col items-center flex-shrink-0">
         <CoupleRow primary={card} spouse={u.spouse} spouseSize={size} onFocus={ctx.onFocus} />
         {u.childIds.length > 0 && (
-          <>
-            <Connector size={size} />
-            <ChildrenComb childIds={u.childIds} size={childSize} renderChild={renderChild} />
-          </>
+          <ChildrenDescent
+            childIds={u.childIds} size={size} childSize={childSize}
+            renderChild={renderChild} padLeft={pad}
+          />
         )}
       </div>
     )
   }
 
-  // Multiple unions → person on top, one branch per union (spouse + their kids).
+  // Multiple partners → the person on top, one branch per partner, each partner's
+  // children grouped beneath them. Grouping the children under their specific
+  // parent already makes each child's parentage clear, and unlike a flanking
+  // layout it never shoves the person off-screen when one branch is a huge
+  // subtree (e.g. the tree's root).
   return (
     <div className="flex flex-col items-center flex-shrink-0">
       {card}
@@ -431,13 +471,33 @@ function FamilyUnit({ id, ctx, depth }: {
   )
 }
 
-// A blood person shown beside their married-in spouse. Crucially, the blood
-// person stays horizontally *centered* (an invisible mirror of the spouse side
-// reserves equal width on the left), so the connector coming down from the
-// parents lands on the blood person — and the line down to their children
-// leaves from the blood person — never from the spouse. The spouse hangs off to
-// the side via the marriage link, exactly like MyHeritage. This is what tells
-// a viewer "Leslie is the child; Marguerite married in", not "they're siblings".
+// The connector + comb that drops from a couple to their children. `padLeft`
+// reserves invisible space on the left so the descent shifts right to the
+// couple's midpoint (the descent column is otherwise centered on the blood person).
+function ChildrenDescent({ childIds, size, childSize, renderChild, padLeft = 0 }: {
+  childIds: string[]
+  size: NodeSize
+  childSize: NodeSize
+  renderChild: (id: string) => React.ReactNode
+  padLeft?: number
+}) {
+  return (
+    <div className="flex items-start">
+      {padLeft > 0 && <div aria-hidden="true" className="flex-shrink-0" style={{ width: padLeft }} />}
+      <div className="flex flex-col items-center">
+        <Connector size={size} />
+        <ChildrenComb childIds={childIds} size={childSize} renderChild={renderChild} />
+      </div>
+    </div>
+  )
+}
+
+// A blood person shown beside their married-in spouse. The blood person stays
+// horizontally centered (an invisible mirror of the spouse side reserves equal
+// width on the left), so the connector coming down from the parents lands on the
+// blood person — never on the spouse. The spouse hangs off to the side via the
+// marriage link. This tells a viewer "Leslie is the child; Marguerite married
+// in", not "they're siblings".
 function CoupleRow({ primary, spouse, spouseSize, onFocus }: {
   primary: React.ReactNode
   spouse: Person | null
@@ -446,24 +506,17 @@ function CoupleRow({ primary, spouse, spouseSize, onFocus }: {
 }) {
   if (!spouse) return <>{primary}</>
 
-  const marriageLink = (
-    <div className="flex items-center self-center mx-1.5">
-      <div className="w-3 h-px bg-amber-500/25" />
-      <Diamond className="text-amber-500/40 mx-1" size={7} />
-      <div className="w-3 h-px bg-amber-500/25" />
-    </div>
-  )
   const spouseCard = <ExplorerNode person={spouse} role="partner" onFocus={onFocus} size={spouseSize} />
 
   return (
     <div className="flex items-start justify-center">
       {/* Invisible mirror of the spouse side → keeps `primary` centered. */}
       <div className="flex items-start invisible" aria-hidden="true">
-        {marriageLink}
+        <MarriageLink />
         {spouseCard}
       </div>
       {primary}
-      {marriageLink}
+      <MarriageLink />
       {spouseCard}
     </div>
   )
