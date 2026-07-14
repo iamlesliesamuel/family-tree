@@ -453,32 +453,31 @@ function FamilyUnit({ id, ctx, depth }: {
     )
   }
 
-  // Multiple partners → the person on top, one branch per partner, each partner's
-  // children grouped beneath them. Grouping the children under their specific
-  // parent already makes each child's parentage clear, and unlike a flanking
-  // layout it never shoves the person off-screen when one branch is a huge
-  // subtree (e.g. the tree's root).
+  // Multiple partners → render each marriage as its own couple block, side by side.
+  // The person is shown paired with each partner (never above them, so partners
+  // never read as children), children descend from each couple's midpoint, and the
+  // blocks pack together with no wide empty gap. Repeating the person per marriage
+  // keeps every child's two parents adjacent and unambiguous.
   return (
-    <div className="flex flex-col items-center flex-shrink-0">
-      {card}
-      <Connector size={size} />
-      <div className="flex flex-nowrap items-start justify-center">
-        {unions.map((u, i) => (
-          <CombColumn key={u.spouse?.id ?? `union-${i}`} size={size}>
-            <div className="flex flex-col items-center">
-              {u.spouse && (
-                <ExplorerNode person={u.spouse} role="partner" onFocus={ctx.onFocus} size={size} />
-              )}
-              {u.childIds.length > 0 && (
-                <>
-                  {u.spouse && <Connector size={size} />}
-                  <ChildrenComb childIds={u.childIds} size={childSize} renderChild={renderChild} />
-                </>
-              )}
-            </div>
-          </CombColumn>
-        ))}
-      </div>
+    <div className="flex items-start justify-center flex-shrink-0">
+      {unions.map((u, i) => {
+        const hasKids = u.childIds.length > 0
+        const pad = u.spouse ? coupleDescentPad(person, size, isFocus) : 0
+        return (
+          <div key={u.spouse?.id ?? `union-${i}`} className="flex flex-col items-center flex-shrink-0 px-3">
+            <CoupleRow
+              primary={<ExplorerNode person={person} role={role} onFocus={ctx.onFocus} size={size} />}
+              spouse={u.spouse} spouseSize={size} onFocus={ctx.onFocus} descend={hasKids}
+            />
+            {hasKids && (
+              <ChildrenDescent
+                childIds={u.childIds} size={size} childSize={childSize}
+                renderChild={renderChild} padLeft={pad}
+              />
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
