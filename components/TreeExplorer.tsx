@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { ExplorerNode } from './ExplorerNode'
+import { PanZoomCanvas } from './PanZoomCanvas'
 import { ExplorerSearch } from './ExplorerSearch'
 import { DepthControls } from './DepthControls'
 import { PeopleSearch } from './SearchBar'
@@ -206,16 +207,18 @@ export function TreeExplorer({
       </header>
 
       {/* ── Content ──────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto">
-        {activeTab === 'directory' ? (
+      {activeTab === 'directory' ? (
+        <div className="flex-1 overflow-y-auto">
           <div className="max-w-2xl mx-auto px-4 py-6">
             <PeopleSearch people={allPeopleFull} />
           </div>
-        ) : (
-          <div className={cn(
-            'w-full px-4 py-8 transition-opacity duration-200',
-            loading && 'opacity-50 pointer-events-none'
-          )}>
+        </div>
+      ) : (
+        <PanZoomCanvas
+          resetKey={`${data.focus.id}:${data.levels.reduce((n, l) => n + l.people.length, 0)}`}
+          className={cn('transition-opacity duration-200', loading && 'opacity-60')}
+        >
+          <div className="px-16 py-10">
             <TreeCanvas
               data={data}
               ancestorLevels={ancestorLevels}
@@ -223,8 +226,8 @@ export function TreeExplorer({
               onFocus={refocus}
             />
           </div>
-        )}
-      </div>
+        </PanZoomCanvas>
+      )}
 
       {/* Loading bar */}
       {loading && (
@@ -342,7 +345,7 @@ function TreeCanvas({ data, ancestorLevels, descendantLevels, onFocus }: TreeCan
   const hasDescendants = focusGroups.some((group) => group.children.length > 0)
 
   return (
-    <div className="flex flex-col items-center gap-0 w-full animate-fade-in">
+    <div className="inline-flex flex-col items-center gap-0 animate-fade-in">
 
       {/* ── Ancestor levels ──────────────────────────────────────────────── */}
       {ancestorLevels.map((level) => (
@@ -414,8 +417,7 @@ function FocusPartnerGroup({
       {children.length > 0 && (
         <>
           <Connector />
-          <div className="w-full overflow-x-auto">
-            <div className="flex flex-nowrap items-start justify-center px-4 pb-8 min-w-min mx-auto">
+          <div className="flex flex-nowrap items-start justify-center pb-8">
               {children.length === 1 ? (
                 <DescendantBranch
                   person={children[0].child}
@@ -446,7 +448,6 @@ function FocusPartnerGroup({
                   </div>
                 ))
               )}
-            </div>
           </div>
         </>
       )}

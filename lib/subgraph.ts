@@ -238,17 +238,16 @@ export async function fetchSubgraph(
 
   levels.sort((a, b) => a.level - b.level)
 
-  // ── Build partners ─────────────────────────────────────────────────────────
-  const partners: SubgraphPartner[] = relRows.map((rel) => ({
-    partner:
-      peopleMap.get(rel.person1_id === focusId ? rel.person2_id : rel.person1_id) ??
-      null,
-    relationship: rel,
-  }))
-
-  const seenPartnerIds = new Set(
-    partners.map((entry) => entry.partner?.id).filter((value): value is string => Boolean(value))
-  )
+  // ── Build partners (deduped by partner — duplicate relationship rows must
+  //    not spawn duplicate partner groups) ────────────────────────────────────
+  const partners: SubgraphPartner[] = []
+  const seenPartnerIds = new Set<string>()
+  relRows.forEach((rel) => {
+    const partnerId = rel.person1_id === focusId ? rel.person2_id : rel.person1_id
+    if (seenPartnerIds.has(partnerId)) return
+    seenPartnerIds.add(partnerId)
+    partners.push({ partner: peopleMap.get(partnerId) ?? null, relationship: rel })
+  })
 
   coParentPartnerIds.forEach((partnerId) => {
     if (seenPartnerIds.has(partnerId)) return
