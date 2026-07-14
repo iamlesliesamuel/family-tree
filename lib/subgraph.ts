@@ -27,6 +27,9 @@ export interface SubgraphResult {
   links: SubgraphLink[]
   partners: SubgraphPartner[]
   partnerGroups: PartnerGroup[]
+  /** Every hydrated person (focus, ancestors, descendants, partners, spouses),
+   *  keyed lookups let the client build couple units anywhere in the tree. */
+  allNodes: Person[]
 }
 
 // Row shape returned by parent_child queries
@@ -189,8 +192,28 @@ export async function fetchSubgraph(
     })
   }
 
+  // ── Co-parents (spouses) of every descendant node ──────────────────────────
+  // For each descendant, find the *other* parent of their children so couples
+  // can be rendered throughout the tree (not just at the focus). These spouses
+  // are usually not descendants of the root, so they must be fetched + hydrated
+  // explicitly. Their parent→child links are added so the tree can group each
+  // descendant's children by co-parent.
+  const descNodeIds = Array.from(new Set(desc.flat()))
+  let descParentRows: PCRow[] = []
+  if (descNodeIds.length > 0) {
+    let q = supabase
+      .from('parent_child')
+      .select('parent_id, child_id')
+      .in('child_id', descNodeIds)
+    if (!showArchived) q = q.is('archived_at', null)
+    const res = await q
+    descParentRows = (res.data ?? []) as PCRow[]
+    descParentRows.forEach((r) => addLink(r.parent_id, r.child_id))
+  }
+  const descCoParentIds = Array.from(new Set(descParentRows.map((r) => r.parent_id)))
+
   // ── Hydrate all people in one query ────────────────────────────────────────
-  const allIds = Array.from(new Set([...anc.flat(), ...desc.flat(), ...partnerIds, ...coParentPartnerIds]))
+  const allIds = Array.from(new Set([...anc.flat(), ...desc.flat(), ...partnerIds, ...coParentPartnerIds, ...descCoParentIds]))
 
   const peopleRes =
     allIds.length > 0
@@ -300,5 +323,7 @@ export async function fetchSubgraph(
     })
   }
 
-  return { focus, levels, links: allLinks, partners, partnerGroups }
+  const allNodes: Person[] = [focus, ...Array.from(peopleMap.values())]
+
+  return { focus, levels, links: allLinks, partners, partnerGroups, allNodes }
 }

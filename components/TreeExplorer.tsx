@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
-import { ExplorerNode } from './ExplorerNode'
+import { ExplorerNode, type NodeSize, type ExplorerRole } from './ExplorerNode'
 import { PanZoomCanvas } from './PanZoomCanvas'
 import { ExplorerSearch } from './ExplorerSearch'
 import { DepthControls } from './DepthControls'
 import { PeopleSearch } from './SearchBar'
 import { ThemeToggle } from './ThemeToggle'
 import { cn } from '@/lib/utils'
-import { getDisplayName, type PersonSummary, type Person, type PartnerGroup } from '@/lib/types'
+import { getDisplayName, type PersonSummary, type Person } from '@/lib/types'
 import type { SubgraphResult, SubgraphLevel } from '@/lib/subgraph'
 
 interface TreeExplorerProps {
@@ -68,8 +68,7 @@ export function TreeExplorer({
   const canGoBack    = histIdx > 0
   const canGoForward = histIdx < history.length - 1
 
-  const ancestorLevels   = data.levels.filter(l => l.level < 0).sort((a, b) => a.level - b.level)
-  const descendantLevels = data.levels.filter(l => l.level > 0).sort((a, b) => a.level - b.level)
+  const ancestorLevels = data.levels.filter(l => l.level < 0).sort((a, b) => a.level - b.level)
 
   return (
     <div className="flex flex-col flex-1 h-full">
@@ -222,7 +221,6 @@ export function TreeExplorer({
             <TreeCanvas
               data={data}
               ancestorLevels={ancestorLevels}
-              descendantLevels={descendantLevels}
               onFocus={refocus}
             />
           </div>
@@ -239,68 +237,254 @@ export function TreeExplorer({
   )
 }
 
-// ─── DescendantBranch ──────────────────────────────────────────────────────────
+// ─── Couple-based descendant tree ───────────────────────────────────────────────
+//
+// Every parent is shown together with their co-parent (spouse) as a couple, with
+// the shared children combed beneath the pair — the way MyHeritage lays it out.
+// A co-parent is inferred as "the other recorded parent of a person's children",
+// so spouses appear throughout the tree even when they aren't descendants of the
+// root. When a person has children with more than one partner, the person is drawn
+// once and each union (partner + their children) branches out below.
 
-function DescendantBranch({
-  person,
-  childMap,
-  onFocus,
-  depth = 1,
-}: {
-  person: Person
-  childMap: Map<string, Person[]>
+const NO_PARTNER = '__no_partner__' // sentinel key for children with no recorded co-parent
+
+interface Union {
+  spouse: Person | null
+  childIds: string[]
+}
+
+interface TreeContext {
+  byId: Map<string, Person>
+  /** personId to their unions (co-parent + shared children), computed once so each
+   *  descendant is placed under exactly one parent even with messy multi-parent data. */
+  layout: Map<string, Union[]>
+  focusId: string
   onFocus: (id: string) => void
-  depth?: number
-}) {
-  const children = childMap.get(person.id) ?? []
-  const size: 'md' | 'sm' | 'xs' = depth === 1 ? 'md' : depth === 2 ? 'sm' : 'xs'
-  const px      = size === 'md' ? 'px-3' : size === 'sm' ? 'px-2' : 'px-1.5'
-  const toothH  = size === 'md' ? 'h-3'  : size === 'sm' ? 'h-2.5' : 'h-2'
+}
 
+function sizeForDepth(depth: number): NodeSize {
+  return depth <= 1 ? 'md' : depth === 2 ? 'sm' : 'xs'
+}
+
+function buildTreeContext(data: SubgraphResult, onFocus: (id: string) => void): TreeContext {
+  const byId = new Map<string, Person>(data.allNodes.map((p) => [p.id, p]))
+
+  const childrenByParent = new Map<string, string[]>()
+  const parentsByChild   = new Map<string, string[]>()
+  data.links.forEach(({ parentId, childId }) => {
+    const kids = childrenByParent.get(parentId) ?? []
+    if (!kids.includes(childId)) kids.push(childId)
+    childrenByParent.set(parentId, kids)
+
+    const parents = parentsByChild.get(childId) ?? []
+    if (!parents.includes(parentId)) parents.push(parentId)
+    parentsByChild.set(childId, parents)
+  })
+
+  const birth = (id: string) => byId.get(id)?.birth_date ?? null
+  const sortByBirth = (a: string, b: string) => {
+    const ba = birth(a), bb = birth(b)
+    if (!ba && !bb) return 0
+    if (!ba) return 1
+    if (!bb) return -1
+    return ba.localeCompare(bb)
+  }
+  childrenByParent.forEach((kids) => kids.sort(sortByBirth))
+
+  // Only *explicit* relationship partners are force-shown when childless. Co-parent
+  // partners inferred from shared children already appear via the child grouping;
+  // surfacing them here would resurrect spouses inferred from archived children.
+  const focusPartnerIds = data.partners
+    .filter((p) => p.relationship)
+    .map((p) => p.partner?.id)
+    .filter((id): id is string => Boolean(id))
+
+  // Choose the most plausible co-parent for a child that lists several parents:
+  // prefer a matching surname, then the parent shared by the most siblings, then a
+  // stable id. This keeps dirty multi-parent records from spawning phantom spouses
+  // (e.g. a grandchild mistakenly listed as a parent of their uncle).
+  const pickCoParent = (childId: string, primaryId: string, freq: Map<string, number>): string => {
+    const child = byId.get(childId)
+    const others = (parentsByChild.get(childId) ?? []).filter((p) => p !== primaryId && byId.has(p))
+    if (others.length === 0) return NO_PARTNER
+    others.sort((a, b) => {
+      const pa = byId.get(a)!, pb = byId.get(b)!
+      const ma = child && pa.last_name === child.last_name ? 1 : 0
+      const mb = child && pb.last_name === child.last_name ? 1 : 0
+      if (ma !== mb) return mb - ma
+      const fa = freq.get(a) ?? 0, fb = freq.get(b) ?? 0
+      if (fa !== fb) return fb - fa
+      return a.localeCompare(b)
+    })
+    return others[0]
+  }
+
+  // Breadth-first from the focus so nearer generations claim each person first; a
+  // person is placed as a child under exactly one parent (no duplicates/cycles).
+  const layout = new Map<string, Union[]>()
+  const claimed = new Set<string>([data.focus.id])
+  const queue: string[] = [data.focus.id]
+
+  while (queue.length > 0) {
+    const pid = queue.shift()!
+    const kids = (childrenByParent.get(pid) ?? []).filter((c) => byId.has(c) && !claimed.has(c))
+    kids.forEach((c) => claimed.add(c))
+
+    // Frequency of each candidate co-parent across this person's children.
+    const freq = new Map<string, number>()
+    for (const c of kids) {
+      for (const pp of parentsByChild.get(c) ?? []) {
+        if (pp !== pid && byId.has(pp)) freq.set(pp, (freq.get(pp) ?? 0) + 1)
+      }
+    }
+
+    const groups = new Map<string, string[]>()
+    for (const c of kids) {
+      const co = pickCoParent(c, pid, freq)
+      const arr = groups.get(co) ?? []
+      arr.push(c)
+      groups.set(co, arr)
+    }
+
+    // The focus keeps its recorded spouses visible even when they share no children.
+    if (pid === data.focus.id) {
+      for (const sp of focusPartnerIds) {
+        if (byId.has(sp) && !groups.has(sp)) groups.set(sp, [])
+      }
+    }
+
+    layout.set(pid, Array.from(groups.entries()).map(([co, kk]) => ({
+      spouse: co === NO_PARTNER ? null : byId.get(co) ?? null,
+      childIds: kk,
+    })))
+
+    kids.forEach((c) => queue.push(c))
+  }
+
+  return { byId, layout, focusId: data.focus.id, onFocus }
+}
+
+function FamilyUnit({ id, ctx, depth }: {
+  id: string
+  ctx: TreeContext
+  depth: number
+}) {
+  const person = ctx.byId.get(id)
+  if (!person) return null
+
+  const isFocus = id === ctx.focusId
+  const size: NodeSize = isFocus ? 'md' : sizeForDepth(depth)
+  const role: ExplorerRole = isFocus ? 'focus' : 'descendant'
+  const childSize = sizeForDepth(depth + 1)
+
+  const unions = ctx.layout.get(id) ?? []
+
+  const card = <ExplorerNode person={person} role={role} onFocus={ctx.onFocus} size={size} />
+  const renderChild = (cid: string) => (
+    <FamilyUnit key={cid} id={cid} ctx={ctx} depth={depth + 1} />
+  )
+
+  // No partner and no children → just the person.
+  if (unions.length === 0) {
+    return <div className="flex flex-col items-center flex-shrink-0">{card}</div>
+  }
+
+  // One union → couple side by side, children combed beneath the pair.
+  if (unions.length === 1) {
+    const u = unions[0]
+    return (
+      <div className="flex flex-col items-center flex-shrink-0">
+        <CoupleRow primary={card} spouse={u.spouse} spouseSize={size} onFocus={ctx.onFocus} />
+        {u.childIds.length > 0 && (
+          <>
+            <Connector size={size} />
+            <ChildrenComb childIds={u.childIds} size={childSize} renderChild={renderChild} />
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // Multiple unions → person on top, one branch per union (spouse + their kids).
   return (
     <div className="flex flex-col items-center flex-shrink-0">
-      <ExplorerNode person={person} role="descendant" onFocus={onFocus} size={size} />
-      {children.length > 0 && (
-        <>
-          <Connector size={size} />
-          {children.length === 1 ? (
-            /* Single child — straight stem, no comb needed */
-            <DescendantBranch
-              person={children[0]}
-              childMap={childMap}
-              onFocus={onFocus}
-              depth={depth + 1}
-            />
-          ) : (
-            /* Multiple children — horizontal comb bar via ::before on each column */
-            <div className="flex flex-nowrap items-start justify-center">
-              {children.map(child => (
-                <div
-                  key={child.id}
-                  className={cn(
-                    'relative flex flex-col items-center flex-shrink-0', px,
-                    // Horizontal comb bar: each column draws its slice
-                    "before:content-[''] before:absolute before:top-0 before:h-px",
-                    'before:bg-zinc-300/70 dark:before:bg-zinc-700/50',
-                    'before:left-0 before:w-full',            // middle children: full width
-                    'first:before:left-[50%] first:before:w-[50%]', // first: right half
-                    'last:before:w-[50%]',                    // last: left half
-                  )}
-                >
-                  {/* Tooth: short vertical drop from bar down to child card */}
-                  <div className={cn('w-px bg-zinc-300/70 dark:bg-zinc-700/50 mt-px', toothH)} />
-                  <DescendantBranch
-                    person={child}
-                    childMap={childMap}
-                    onFocus={onFocus}
-                    depth={depth + 1}
-                  />
-                </div>
-              ))}
+      {card}
+      <Connector size={size} />
+      <div className="flex flex-nowrap items-start justify-center">
+        {unions.map((u, i) => (
+          <CombColumn key={u.spouse?.id ?? `union-${i}`} size={size}>
+            <div className="flex flex-col items-center">
+              {u.spouse && (
+                <ExplorerNode person={u.spouse} role="partner" onFocus={ctx.onFocus} size={size} />
+              )}
+              {u.childIds.length > 0 && (
+                <>
+                  {u.spouse && <Connector size={size} />}
+                  <ChildrenComb childIds={u.childIds} size={childSize} renderChild={renderChild} />
+                </>
+              )}
             </div>
-          )}
-        </>
-      )}
+          </CombColumn>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CoupleRow({ primary, spouse, spouseSize, onFocus }: {
+  primary: React.ReactNode
+  spouse: Person | null
+  spouseSize: NodeSize
+  onFocus: (id: string) => void
+}) {
+  if (!spouse) return <>{primary}</>
+  return (
+    <div className="flex items-start justify-center">
+      {primary}
+      <div className="flex items-center self-center mx-1.5">
+        <div className="w-3 h-px bg-amber-500/25" />
+        <Diamond className="text-amber-500/40 mx-1" size={7} />
+        <div className="w-3 h-px bg-amber-500/25" />
+      </div>
+      <ExplorerNode person={spouse} role="partner" onFocus={onFocus} size={spouseSize} />
+    </div>
+  )
+}
+
+// A single column of the horizontal "comb" that fans a parent out to its children
+// (or a person out to their several unions). Each column paints its own slice of
+// the connecting bar via a ::before pseudo-element.
+function CombColumn({ children, size }: { children: React.ReactNode; size: NodeSize }) {
+  const px     = size === 'md' ? 'px-3' : size === 'sm' ? 'px-2' : 'px-1.5'
+  const toothH = size === 'md' ? 'h-3'  : size === 'sm' ? 'h-2.5' : 'h-2'
+  return (
+    <div className={cn(
+      'relative flex flex-col items-center flex-shrink-0', px,
+      "before:content-[''] before:absolute before:top-0 before:h-px",
+      'before:bg-zinc-300/70 dark:before:bg-zinc-700/50',
+      'before:left-0 before:w-full',
+      'first:before:left-[50%] first:before:w-[50%]',
+      'last:before:w-[50%]',
+    )}>
+      <div className={cn('w-px bg-zinc-300/70 dark:bg-zinc-700/50 mt-px', toothH)} />
+      {children}
+    </div>
+  )
+}
+
+function ChildrenComb({ childIds, size, renderChild }: {
+  childIds: string[]
+  size: NodeSize
+  renderChild: (id: string) => React.ReactNode
+}) {
+  if (childIds.length === 1) {
+    return <div className="flex justify-center">{renderChild(childIds[0])}</div>
+  }
+  return (
+    <div className="flex flex-nowrap items-start justify-center">
+      {childIds.map((cid) => (
+        <CombColumn key={cid} size={size}>{renderChild(cid)}</CombColumn>
+      ))}
     </div>
   )
 }
@@ -310,39 +494,16 @@ function DescendantBranch({
 interface TreeCanvasProps {
   data: SubgraphResult
   ancestorLevels: SubgraphLevel[]
-  descendantLevels: SubgraphLevel[]
   onFocus: (id: string) => void
 }
 
-function TreeCanvas({ data, ancestorLevels, descendantLevels, onFocus }: TreeCanvasProps) {
+function TreeCanvas({ data, ancestorLevels, onFocus }: TreeCanvasProps) {
   const hasAncestors = ancestorLevels.length > 0
+  const ctx = buildTreeContext(data, onFocus)
 
-  const allDescendantPeople = new Map<string, Person>()
-  descendantLevels.forEach(level => level.people.forEach(p => allDescendantPeople.set(p.id, p)))
-
-  const childMap = new Map<string, Person[]>()
-  data.links.forEach(({ parentId, childId }) => {
-    const child = allDescendantPeople.get(childId)
-    if (!child) return
-    const existing = childMap.get(parentId) ?? []
-    existing.push(child)
-    childMap.set(parentId, existing)
-  })
-
-  childMap.forEach(children => {
-    children.sort((a, b) => {
-      if (!a.birth_date && !b.birth_date) return 0
-      if (!a.birth_date) return 1
-      if (!b.birth_date) return -1
-      return a.birth_date.localeCompare(b.birth_date)
-    })
-  })
-
-  const focusGroups = data.partnerGroups.length > 0
-    ? data.partnerGroups
-    : [{ partner: null, relationship: null, children: (childMap.get(data.focus.id) ?? []).map((child) => ({ child, is_adopted: false })) }]
-  const hasPartners  = focusGroups.some((group) => Boolean(group.partner))
-  const hasDescendants = focusGroups.some((group) => group.children.length > 0)
+  const focusUnions    = ctx.layout.get(data.focus.id) ?? []
+  const hasDescendants = focusUnions.some((u) => u.childIds.length > 0)
+  const hasPartners    = focusUnions.some((u) => u.spouse)
 
   return (
     <div className="inline-flex flex-col items-center gap-0 animate-fade-in">
@@ -356,18 +517,9 @@ function TreeCanvas({ data, ancestorLevels, descendantLevels, onFocus }: TreeCan
         </div>
       ))}
 
-      {/* ── Focus person + grouped co-parents ───────────────────────────── */}
-      <div className="flex flex-col items-center w-full">
-        {focusGroups.map((group, index) => (
-          <FocusPartnerGroup
-            key={`${group.partner?.id ?? 'unknown'}-${index}`}
-            group={group}
-            focus={data.focus}
-            childMap={childMap}
-            onFocus={onFocus}
-            showFocus={index === 0}
-          />
-        ))}
+      {/* ── Focus + descendants, rendered as couples ─────────────────────── */}
+      <div className="flex flex-col items-center w-full py-3">
+        <FamilyUnit id={data.focus.id} ctx={ctx} depth={0} />
       </div>
 
       {/* Empty state */}
@@ -375,81 +527,6 @@ function TreeCanvas({ data, ancestorLevels, descendantLevels, onFocus }: TreeCan
         <p className="mt-8 text-sm text-zinc-400 dark:text-zinc-600 italic text-center">
           No family connections recorded for this person.
         </p>
-      )}
-    </div>
-  )
-}
-
-function FocusPartnerGroup({
-  group,
-  focus,
-  childMap,
-  onFocus,
-  showFocus,
-}: {
-  group: PartnerGroup
-  focus: Person
-  childMap: Map<string, Person[]>
-  onFocus: (id: string) => void
-  showFocus: boolean
-}) {
-  const hasPartner = Boolean(group.partner)
-  const children = group.children
-
-  return (
-    <div className="flex flex-col items-center w-full">
-      <div className="flex items-start justify-center gap-3 flex-wrap py-3">
-        {showFocus ? <ExplorerNode person={focus} role="focus" onFocus={onFocus} /> : <Diamond className="text-amber-500/20 self-center mt-8" size={8} />}
-        {hasPartner && (
-          <>
-            <div className="flex items-center self-center h-10">
-              <div className="flex items-center gap-1.5">
-                <div className="w-4 h-px bg-amber-500/25" />
-                <Diamond className="text-amber-500/30" size={8} />
-                <div className="w-4 h-px bg-amber-500/25" />
-              </div>
-            </div>
-            <ExplorerNode person={group.partner!} role="partner" onFocus={onFocus} />
-          </>
-        )}
-      </div>
-
-      {children.length > 0 && (
-        <>
-          <Connector />
-          <div className="flex flex-nowrap items-start justify-center pb-8">
-              {children.length === 1 ? (
-                <DescendantBranch
-                  person={children[0].child}
-                  childMap={childMap}
-                  onFocus={onFocus}
-                  depth={1}
-                />
-              ) : (
-                children.map(({ child }) => (
-                  <div
-                    key={`${group.partner?.id ?? 'unknown'}-${child.id}`}
-                    className={cn(
-                      'relative flex flex-col items-center flex-shrink-0 px-3',
-                      "before:content-[''] before:absolute before:top-0 before:h-px",
-                      'before:bg-zinc-300/70 dark:before:bg-zinc-700/50',
-                      'before:left-0 before:w-full',
-                      'first:before:left-[50%] first:before:w-[50%]',
-                      'last:before:w-[50%]',
-                    )}
-                  >
-                    <div className="w-px h-3 mt-px bg-zinc-300/70 dark:bg-zinc-700/50" />
-                    <DescendantBranch
-                      person={child}
-                      childMap={childMap}
-                      onFocus={onFocus}
-                      depth={1}
-                    />
-                  </div>
-                ))
-              )}
-          </div>
-        </>
       )}
     </div>
   )
