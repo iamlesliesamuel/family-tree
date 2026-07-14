@@ -453,32 +453,45 @@ function FamilyUnit({ id, ctx, depth }: {
     )
   }
 
-  // Multiple partners → the person is shown ONCE in the centre, with a marriage
-  // line stretching out to each partner. Each partner sits above their own family
-  // (so the lines down to the children stay straight) and the line simply spans
-  // whatever distance separates them from the person — exactly like MyHeritage.
-  const mid = Math.ceil(unions.length / 2)
-  const leftUnions  = unions.slice(0, mid).reverse() // innermost union nearest the person
-  const rightUnions = unions.slice(mid)
+  // Multiple partners → the person is shown ONCE in the centre. Each partner is an
+  // arm: a marriage line runs from the person out to the partner, and that union's
+  // children hang from the MIDDLE of that line (via a stem down to the line), so
+  // every child clearly belongs to the person and that partner. Partners split to
+  // the left and right; an invisible mirror re-centres the person so the connector
+  // coming down from their own parents still lands on them.
+  const half = Math.floor(unions.length / 2)
+  const leftUnions  = unions.slice(0, half).reverse() // innermost union nearest the person
+  const rightUnions = unions.slice(half)
+  const mkBlock = (u: Union, key: string, side: 'left' | 'right') => (
+    <UnionBlock key={key} side={side} union={u}
+      size={size} childSize={childSize} onFocus={ctx.onFocus} renderChild={renderChild} />
+  )
+  const needCentre = !isFocus // descendants have a parent connector to align to
   return (
     <div className="flex items-start justify-center flex-shrink-0">
-      {leftUnions.map((u, i) => (
-        <SpouseWing key={u.spouse?.id ?? `l-${i}`} side="left" union={u}
-          size={size} childSize={childSize} onFocus={ctx.onFocus} renderChild={renderChild} />
-      ))}
+      {needCentre && (
+        <div className="flex items-start invisible flex-shrink-0" aria-hidden="true">
+          {rightUnions.map((u, i) => mkBlock(u, `mr-${i}`, 'right'))}
+        </div>
+      )}
+      {leftUnions.map((u, i) => mkBlock(u, `l-${i}`, 'left'))}
       <div className="flex flex-col items-center flex-shrink-0">{card}</div>
-      {rightUnions.map((u, i) => (
-        <SpouseWing key={u.spouse?.id ?? `r-${i}`} side="right" union={u}
-          size={size} childSize={childSize} onFocus={ctx.onFocus} renderChild={renderChild} />
-      ))}
+      {rightUnions.map((u, i) => mkBlock(u, `r-${i}`, 'right'))}
+      {needCentre && (
+        <div className="flex items-start invisible flex-shrink-0" aria-hidden="true">
+          {leftUnions.map((u, i) => mkBlock(u, `ml-${i}`, 'left'))}
+        </div>
+      )}
     </div>
   )
 }
 
-// One partner of a multi-union person, drawn on one side of them. The partner sits
-// centred over their own family; a marriage line (a diamond plus a flexible line)
-// spans the gap back to the person. `side` says which way the line runs.
-function SpouseWing({ side, union, size, childSize, onFocus, renderChild }: {
+// One partner-arm of a multi-union person. A marriage line runs back to the person
+// (a flexible line so it spans whatever distance); the partner sits at the far end.
+// The union's children hang from a stem dropped from the MIDDLE of that line, so
+// they read as the children of the person AND this partner — not of the partner
+// alone.
+function UnionBlock({ side, union, size, childSize, onFocus, renderChild }: {
   side: 'left' | 'right'
   union: Union
   size: NodeSize
@@ -488,20 +501,24 @@ function SpouseWing({ side, union, size, childSize, onFocus, renderChild }: {
 }) {
   const spouseCard = union.spouse
     ? <ExplorerNode person={union.spouse} role="partner" onFocus={onFocus} size={size} />
-    : <span className="flex-shrink-0" />
-  const line    = <div className="flex-1 min-w-[12px] h-px bg-amber-500/50" />
+    : null
+  const line    = <div className="flex-1 min-w-[16px] h-px bg-amber-500/50" />
   const diamond = <Diamond className="text-amber-500/60 mx-1 flex-shrink-0" size={7} />
-  const spacer  = <div className="flex-1" />
-  // The flexible line fills the gap on the side facing the person; a matching
-  // spacer on the far side keeps the partner centred over their family.
-  const topRow = side === 'right'
-    ? <div className="flex items-center w-full">{line}{diamond}{spouseCard}{spacer}</div>
-    : <div className="flex items-center w-full">{spacer}{spouseCard}{diamond}{line}</div>
+  const hasKids = union.childIds.length > 0
 
   return (
     <div className="flex flex-col items-center flex-shrink-0">
-      {topRow}
-      {union.childIds.length > 0 && (
+      {/* Marriage line spanning back to the person; partner at the outer end. */}
+      <div className="relative flex items-center w-full">
+        {side === 'right'
+          ? <>{line}{spouseCard && diamond}{spouseCard}</>
+          : <>{spouseCard}{spouseCard && diamond}{line}</>}
+        {/* Stem: drop from the middle of the marriage line down to the children. */}
+        {hasKids && (
+          <div className="absolute left-1/2 -translate-x-1/2 top-1/2 bottom-0 w-px bg-zinc-300/70 dark:bg-zinc-700/50" />
+        )}
+      </div>
+      {hasKids && (
         <>
           <Connector size={size} />
           <ChildrenComb childIds={union.childIds} size={childSize} renderChild={renderChild} />
